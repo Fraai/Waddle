@@ -1,0 +1,26 @@
+export interface User {
+  id: number;
+  email: string;
+  name: string | null;
+  created_at: string;
+}
+
+export async function provisionUser(db: D1Database, email: string, name: string | null): Promise<User> {
+  const normalizedEmail = email.trim().toLowerCase();
+  await db.prepare(
+    `INSERT INTO users (email, name) VALUES (?, ?)
+     ON CONFLICT(email) DO UPDATE SET name = excluded.name`,
+  ).bind(normalizedEmail, name).run();
+
+  const user = await db.prepare('SELECT id, email, name, created_at FROM users WHERE email = ?')
+    .bind(normalizedEmail).first<User>();
+  if (!user) throw new Error('Failed to provision user');
+
+  await db.prepare(
+    `INSERT INTO projects (user_id, name, is_inbox, position)
+     SELECT ?, 'Inbox', 1, 0
+     WHERE NOT EXISTS (SELECT 1 FROM projects WHERE user_id = ? AND is_inbox = 1)`,
+  ).bind(user.id, user.id).run();
+
+  return user;
+}

@@ -1,0 +1,25 @@
+---
+import '../../styles/global.css';
+const reason = Astro.url.searchParams.get('reason') ?? 'unknown';
+const messages: Record<string, string> = {
+  state: 'Sign-in expired, please try again.',
+  exchange: 'Could not verify your Google account, please try again.',
+  domain: 'Only @fraai.agency accounts can sign in.',
+  unknown: 'Something went wrong signing you in.',
+};
+---
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>Sign-in error · Todo</title>
+  </head>
+  <body class="min-h-screen flex items-center justify-center bg-gray-50">
+    <div class="text-center max-w-sm">
+      <p class="text-red-600 mb-4">{messages[reason] ?? messages.unknown}</p>
+      <a href="/login" class="underline">Back to sign in</a>
+    </div>
+  </body>
+</html>
