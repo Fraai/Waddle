@@ -16,7 +16,7 @@ export default defineConfig(async () => {
         miniflare: {
           compatibilityDate: '2026-07-07',
           d1Databases: { DB: 'todo-fraai-agency-test' },
-          bindings: { TEST_MIGRATIONS: migrations },
+          bindings: { TEST_MIGRATIONS: migrations, JWT_SECRET: 'test-secret-at-least-32-characters-long' },
         },
       }),
     ],
