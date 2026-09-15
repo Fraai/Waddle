@@ -32,4 +32,17 @@ describe('provisionUser', () => {
     const user = await provisionUser(env.DB, 'Sam3@Fraai.Agency', null);
     expect(user.email).toBe('sam3@fraai.agency');
   });
+
+  it('handles concurrent calls for the same email without creating duplicate inboxes', async () => {
+    const email = 'concurrent@fraai.agency';
+    const [user1, user2] = await Promise.all([
+      provisionUser(env.DB, email, 'User A'),
+      provisionUser(env.DB, email, 'User B'),
+    ]);
+    expect(user1.id).toBe(user2.id);
+
+    const inboxCount = await env.DB.prepare('SELECT COUNT(*) AS n FROM projects WHERE user_id = ? AND is_inbox = 1')
+      .bind(user1.id).first<{ n: number }>();
+    expect(inboxCount?.n).toBe(1);
+  });
 });

@@ -48,11 +48,12 @@ describe('cookie helpers', () => {
     expect(parseCookies(null)).toEqual({});
   });
 
-  it('makeAuthCookie sets HttpOnly, SameSite=Lax, and a 7-day Max-Age', () => {
+  it('makeAuthCookie sets HttpOnly, SameSite=Lax, Secure, and a 7-day Max-Age', () => {
     const cookie = makeAuthCookie('token123');
     expect(cookie).toContain('auth-token=token123');
     expect(cookie).toContain('HttpOnly');
     expect(cookie).toContain('SameSite=Lax');
+    expect(cookie).toContain('Secure');
     expect(cookie).toContain(`Max-Age=${60 * 60 * 24 * 7}`);
   });
 

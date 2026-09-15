@@ -19,7 +19,8 @@ export async function provisionUser(db: D1Database, email: string, name: string 
   await db.prepare(
     `INSERT INTO projects (user_id, name, is_inbox, position)
      SELECT ?, 'Inbox', 1, 0
-     WHERE NOT EXISTS (SELECT 1 FROM projects WHERE user_id = ? AND is_inbox = 1)`,
+     WHERE NOT EXISTS (SELECT 1 FROM projects WHERE user_id = ? AND is_inbox = 1)
+     ON CONFLICT (user_id) WHERE is_inbox = 1 DO NOTHING`,
   ).bind(user.id, user.id).run();
 
   return user;

@@ -88,11 +88,11 @@ export function parseCookies(header: string | null): Record<string, string> {
 }
 
 export function makeAuthCookie(token: string): string {
-  return `auth-token=${token}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${JWT_TTL_SECONDS}`;
+  return `auth-token=${token}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${JWT_TTL_SECONDS}; Secure`;
 }
 
 export function clearAuthCookie(): string {
-  return `auth-token=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0`;
+  return `auth-token=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0; Secure`;
 }
 
 const ALLOWED_DOMAINS = ['@fraai.agency'];

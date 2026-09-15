@@ -11,7 +11,7 @@ export const GET: APIRoute = async ({ request }) => {
     status: 302,
     headers: {
       Location: url,
-      'Set-Cookie': `oauth-state=${state}; HttpOnly; SameSite=Lax; Path=/; Max-Age=600`,
+      'Set-Cookie': `oauth-state=${state}; HttpOnly; SameSite=Lax; Path=/; Max-Age=600; Secure`,
     },
   });
 };
