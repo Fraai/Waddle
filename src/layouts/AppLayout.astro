@@ -1,0 +1,66 @@
+---
+import '../styles/global.css';
+import { actions } from 'astro:actions';
+import { env } from 'cloudflare:workers';
+import { listProjects } from '../lib/db';
+
+interface Props {
+  title: string;
+}
+const { title } = Astro.props;
+const user = Astro.locals.user!;
+const projects = await listProjects(env.DB, user.id);
+const inbox = projects.find((p) => p.is_inbox === 1)!;
+const otherProjects = projects.filter((p) => p.is_inbox === 0);
+const path = Astro.url.pathname;
+const isActive = (href: string) => path === href;
+---
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>{title} · Todo</title>
+  </head>
+  <body class="flex min-h-screen bg-gray-50 text-gray-900">
+    <aside class="w-64 shrink-0 border-r border-gray-200 p-4 flex flex-col gap-1">
+      <div class="font-semibold mb-4">Todo</div>
+      <a href="/app/today" class={`px-2 py-1 rounded ${isActive('/app/today') ? 'bg-gray-200' : ''}`}>Today</a>
+      <a href="/app/upcoming" class={`px-2 py-1 rounded ${isActive('/app/upcoming') ? 'bg-gray-200' : ''}`}>Upcoming</a>
+      <a
+        href={`/app/projects/${inbox.id}`}
+        class={`px-2 py-1 rounded ${isActive(`/app/projects/${inbox.id}`) ? 'bg-gray-200' : ''}`}
+      >
+        Inbox
+      </a>
+      <div class="mt-4 text-xs uppercase text-gray-500">Projects</div>
+      <ul id="project-list" class="flex flex-col gap-1">
+        {otherProjects.map((project) => (
+          <li data-project-id={project.id} class="flex items-center gap-1 group">
+            <a
+              href={`/app/projects/${project.id}`}
+              class={`flex-1 block px-2 py-1 rounded ${isActive(`/app/projects/${project.id}`) ? 'bg-gray-200' : ''}`}
+            >
+              {project.name}
+            </a>
+            <button
+              class="project-delete text-xs text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 px-1"
+              data-project-id={project.id}
+              title="Delete project"
+            >
+              &times;
+            </button>
+          </li>
+        ))}
+      </ul>
+      <form method="POST" action={actions.createProject} class="mt-2">
+        <input name="name" placeholder="New project" class="w-full text-sm border rounded px-2 py-1" required />
+      </form>
+    </aside>
+    <main class="flex-1 p-6">
+      <slot />
+    </main>
+  </body>
+</html>
+<script src="../scripts/sidebar.ts"></script>
