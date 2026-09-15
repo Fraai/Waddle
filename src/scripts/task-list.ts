@@ -1,8 +1,10 @@
 import Sortable from 'sortablejs';
 import { actions } from 'astro:actions';
-import { attachTaskToggles } from './task-toggle';
-
-attachTaskToggles();
+// Side-effect import only: task-toggle.ts self-invokes attachTaskToggles() at
+// module load, which is what Tasks 13-14 rely on when loading it standalone.
+// Calling attachTaskToggles() again here would double-register `change`
+// listeners on every checkbox (each toggle click would fire toggleTaskDone twice).
+import './task-toggle';
 
 document.querySelectorAll<HTMLButtonElement>('.task-delete').forEach((button) => {
   button.addEventListener('click', async () => {
