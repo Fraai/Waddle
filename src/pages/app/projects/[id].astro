@@ -1,0 +1,90 @@
+---
+import AppLayout from '../../../layouts/AppLayout.astro';
+import { actions } from 'astro:actions';
+import { env } from 'cloudflare:workers';
+import * as db from '../../../lib/db';
+
+const user = Astro.locals.user!;
+const projectId = Number(Astro.params.id);
+if (!Number.isInteger(projectId)) return Astro.redirect('/app/today');
+
+const projects = await db.listProjects(env.DB, user.id);
+const project = projects.find((p) => p.id === projectId);
+if (!project) return Astro.redirect('/app/today');
+
+const [sections, tasks] = await Promise.all([
+  db.listSections(env.DB, user.id, projectId),
+  db.listTasksByProject(env.DB, user.id, projectId),
+]);
+
+const topLevel = tasks.filter((t) => t.parent_task_id === null);
+const subtasksByParent = new Map<number, typeof tasks>();
+for (const t of tasks) {
+  if (t.parent_task_id === null) continue;
+  const list = subtasksByParent.get(t.parent_task_id) ?? [];
+  list.push(t);
+  subtasksByParent.set(t.parent_task_id, list);
+}
+
+const sectionGroups = [
+  { id: null as number | null, name: null as string | null, tasks: topLevel.filter((t) => t.section_id === null) },
+  ...sections.map((s) => ({ id: s.id, name: s.name, tasks: topLevel.filter((t) => t.section_id === s.id) })),
+];
+---
+<AppLayout title={project.name}>
+  <div data-project-id={projectId}>
+    <h1 class="text-xl font-semibold mb-4">{project.name}</h1>
+
+    {sectionGroups.map((group) => (
+      <section class="mb-6">
+        {group.name && (
+          <h2 class="text-sm font-medium text-gray-500 mb-2 flex items-center gap-2">
+            {group.name}
+            <button class="section-delete text-xs text-gray-400 hover:text-red-500" data-section-id={group.id}>
+              &times;
+            </button>
+          </h2>
+        )}
+        <ul class="task-list flex flex-col gap-1" data-section-id={group.id ?? ''}>
+          {group.tasks.map((task) => (
+            <li data-task-id={task.id} class="border rounded p-2">
+              <div class="flex items-center gap-2">
+                <input type="checkbox" class="task-toggle" data-task-id={task.id} checked={task.done_at !== null} />
+                <span class={task.done_at ? 'line-through text-gray-400' : ''}>{task.title}</span>
+                {task.due_date && <span class="text-xs text-gray-500">{task.due_date}</span>}
+                <span class="text-xs text-gray-400">P{task.priority}</span>
+                <button class="task-delete text-xs text-red-500" data-task-id={task.id}>Delete</button>
+              </div>
+              {(subtasksByParent.get(task.id) ?? []).length > 0 && (
+                <ul class="ml-6 mt-1 flex flex-col gap-1">
+                  {(subtasksByParent.get(task.id) ?? []).map((sub) => (
+                    <li class="flex items-center gap-2 text-sm">
+                      <input type="checkbox" class="task-toggle" data-task-id={sub.id} checked={sub.done_at !== null} />
+                      <span class={sub.done_at ? 'line-through text-gray-400' : ''}>{sub.title}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <form method="POST" action={actions.createTask} class="ml-6 mt-1">
+                <input type="hidden" name="projectId" value={projectId} />
+                <input type="hidden" name="parentTaskId" value={task.id} />
+                <input name="title" placeholder="Add subtask" class="text-xs border rounded px-1" />
+              </form>
+            </li>
+          ))}
+        </ul>
+        <form method="POST" action={actions.createTask} class="mt-2 flex gap-2">
+          <input type="hidden" name="projectId" value={projectId} />
+          {group.id !== null && <input type="hidden" name="sectionId" value={group.id} />}
+          <input name="title" placeholder="Add task" class="text-sm border rounded px-2 py-1 flex-1" required />
+        </form>
+      </section>
+    ))}
+
+    <form method="POST" action={actions.createSection} class="mt-4">
+      <input type="hidden" name="projectId" value={projectId} />
+      <input name="name" placeholder="Add section" class="text-sm border rounded px-2 py-1" required />
+    </form>
+  </div>
+</AppLayout>
+<script src="../../../scripts/task-list.ts"></script>
