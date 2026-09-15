@@ -72,6 +72,18 @@ describe('updateTask', () => {
     const theirTask = await db.createTask(env.DB, otherUserId, { projectId: theirProject.id, title: 'Theirs' });
     await expect(db.updateTask(env.DB, userId, theirTask.id, { title: 'Hijacked' })).rejects.toBeInstanceOf(db.NotFoundError);
   });
+
+  it('clears a stale section_id when moved to a different project without specifying sectionId', async () => {
+    const section = await db.createSection(env.DB, userId, projectId, 'Section A');
+    const task = await db.createTask(env.DB, userId, { projectId, sectionId: section.id, title: 'Movable' });
+    const otherProject = await db.createProject(env.DB, userId, 'Other');
+
+    await db.updateTask(env.DB, userId, task.id, { projectId: otherProject.id });
+
+    const [reloaded] = await db.listTasksByProject(env.DB, userId, otherProject.id);
+    expect(reloaded.project_id).toBe(otherProject.id);
+    expect(reloaded.section_id).toBeNull();
+  });
 });
 
 describe('toggleTaskDone', () => {
@@ -135,6 +147,25 @@ describe('reorderTasks', () => {
     const tasks = await db.listTasksByProject(env.DB, userId, projectId);
     const byId = new Map(tasks.map((t) => [t.id, t]));
     expect(byId.get(a.id)?.position).toBe(1);
+    expect(byId.get(b.id)?.position).toBe(2);
+  });
+
+  it('throws NotFoundError and leaves rows unchanged when sectionId belongs to a different project', async () => {
+    const a = await db.createTask(env.DB, userId, { projectId, title: 'A' });
+    const b = await db.createTask(env.DB, userId, { projectId, title: 'B' });
+
+    const otherProject = await db.createProject(env.DB, userId, 'Other');
+    const foreignSection = await db.createSection(env.DB, userId, otherProject.id, 'Foreign section');
+
+    await expect(
+      db.reorderTasks(env.DB, userId, projectId, foreignSection.id, [a.id, b.id]),
+    ).rejects.toBeInstanceOf(db.NotFoundError);
+
+    const tasks = await db.listTasksByProject(env.DB, userId, projectId);
+    const byId = new Map(tasks.map((t) => [t.id, t]));
+    expect(byId.get(a.id)?.section_id).toBeNull();
+    expect(byId.get(a.id)?.position).toBe(1);
+    expect(byId.get(b.id)?.section_id).toBeNull();
     expect(byId.get(b.id)?.position).toBe(2);
   });
 });

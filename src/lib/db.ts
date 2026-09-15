@@ -220,11 +220,24 @@ export async function updateTask(
   if (!task) throw new NotFoundError('Task not found');
 
   const projectId = input.projectId ?? task.project_id;
+  const projectChanged = input.projectId != null && input.projectId !== task.project_id;
   if (input.projectId != null) await assertProjectOwned(db, userId, input.projectId);
   if (input.sectionId != null) {
     const section = await db.prepare('SELECT id FROM sections WHERE id = ? AND project_id = ?')
       .bind(input.sectionId, projectId).first();
     if (!section) throw new NotFoundError('Section not found');
+  }
+
+  // ponytail: when the caller moves the task to a new project without saying
+  // anything about section, the task's existing section (scoped to the OLD
+  // project) can't just carry over — re-check it against the new project and
+  // fall back to null (unsectioned) rather than writing a cross-project
+  // section_id/project_id pair.
+  let sectionId = input.sectionId !== undefined ? input.sectionId : task.section_id;
+  if (input.sectionId === undefined && projectChanged && task.section_id != null) {
+    const section = await db.prepare('SELECT id FROM sections WHERE id = ? AND project_id = ?')
+      .bind(task.section_id, projectId).first();
+    sectionId = section ? task.section_id : null;
   }
 
   await db.prepare(
@@ -235,7 +248,7 @@ export async function updateTask(
     input.dueDate !== undefined ? input.dueDate : task.due_date,
     input.priority ?? task.priority,
     projectId,
-    input.sectionId !== undefined ? input.sectionId : task.section_id,
+    sectionId,
     taskId, userId,
   ).run();
 }
@@ -264,6 +277,11 @@ export async function reorderTasks(
   db: D1Database, userId: number, projectId: number, sectionId: number | null, orderedIds: number[],
 ): Promise<void> {
   await assertProjectOwned(db, userId, projectId);
+  if (sectionId != null) {
+    const section = await db.prepare('SELECT id FROM sections WHERE id = ? AND project_id = ?')
+      .bind(sectionId, projectId).first();
+    if (!section) throw new NotFoundError('Section not found');
+  }
   const placeholders = orderedIds.map(() => '?').join(',');
   const owned = await db.prepare(
     `SELECT COUNT(*) AS count FROM tasks WHERE project_id = ? AND user_id = ? AND id IN (${placeholders})`,
