@@ -17,7 +17,9 @@ export const onRequest = defineMiddleware(async (context, next) => {
   }
 
   if (url.pathname.startsWith('/app') && !locals.user) {
-    return redirect('/login');
+    const response = new Response(null, { status: 302, headers: { Location: '/login' } });
+    response.headers.set('X-Robots-Tag', 'noindex, nofollow');
+    return response;
   }
 
   const response = await next();

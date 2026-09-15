@@ -19,9 +19,17 @@ describe('auth middleware', () => {
   it('redirects unauthenticated requests to /app/* to /login', async () => {
     const context = makeContext('https://todo.fraai.agency/app/today');
     const next = vi.fn().mockResolvedValue(new Response('ok'));
-    await onRequest(context as any, next);
-    expect(context.redirect).toHaveBeenCalledWith('/login');
+    const response = await onRequest(context as any, next);
+    expect(response.status).toBe(302);
+    expect(response.headers.get('Location')).toBe('/login');
     expect(next).not.toHaveBeenCalled();
+  });
+
+  it('sets X-Robots-Tag: noindex on redirect for unauthenticated /app', async () => {
+    const context = makeContext('https://todo.fraai.agency/app/today');
+    const next = vi.fn().mockResolvedValue(new Response('ok'));
+    const response = await onRequest(context as any, next);
+    expect(response.headers.get('X-Robots-Tag')).toBe('noindex, nofollow');
   });
 
   it('sets locals.user from a valid JWT cookie and calls next', async () => {
