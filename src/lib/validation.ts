@@ -13,3 +13,17 @@ export const renameProjectSchema = z.object({
 });
 export const deleteProjectSchema = z.object({ projectId: idParam });
 export const reorderProjectsSchema = z.object({ orderedIds: z.array(idParam).min(1) });
+
+export const createSectionSchema = z.object({
+  projectId: idParam,
+  name: requiredText('Name is required'),
+});
+export const renameSectionSchema = z.object({
+  sectionId: idParam,
+  name: requiredText('Name is required'),
+});
+export const deleteSectionSchema = z.object({ sectionId: idParam });
+export const reorderSectionsSchema = z.object({
+  projectId: idParam,
+  orderedIds: z.array(idParam).min(1),
+});

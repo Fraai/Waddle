@@ -71,3 +71,65 @@ export async function reorderProjects(db: D1Database, userId: number, orderedIds
   );
   await db.batch(statements);
 }
+
+export interface Section {
+  id: number;
+  project_id: number;
+  name: string;
+  position: number;
+  created_at: string;
+}
+
+export async function listSections(db: D1Database, userId: number, projectId: number): Promise<Section[]> {
+  await assertProjectOwned(db, userId, projectId);
+  const { results } = await db.prepare('SELECT * FROM sections WHERE project_id = ? ORDER BY position ASC')
+    .bind(projectId).all<Section>();
+  return results;
+}
+
+export async function createSection(db: D1Database, userId: number, projectId: number, name: string): Promise<Section> {
+  await assertProjectOwned(db, userId, projectId);
+  const row = await db.prepare('SELECT COALESCE(MAX(position), 0) AS max FROM sections WHERE project_id = ?')
+    .bind(projectId).first<{ max: number }>();
+  const nextPosition = (row?.max ?? 0) + 1;
+  const result = await db.prepare('INSERT INTO sections (project_id, name, position) VALUES (?, ?, ?) RETURNING *')
+    .bind(projectId, name, nextPosition).first<Section>();
+  if (!result) throw new Error('Failed to create section');
+  return result;
+}
+
+export async function renameSection(db: D1Database, userId: number, sectionId: number, name: string): Promise<void> {
+  const { meta } = await db.prepare(
+    `UPDATE sections SET name = ?
+     WHERE id = ? AND project_id IN (SELECT id FROM projects WHERE user_id = ?)`,
+  ).bind(name, sectionId, userId).run();
+  if (meta.changes === 0) throw new NotFoundError('Section not found');
+}
+
+export async function deleteSection(db: D1Database, userId: number, sectionId: number): Promise<void> {
+  const results = await db.batch([
+    db.prepare('UPDATE tasks SET section_id = NULL WHERE section_id = ? AND user_id = ?').bind(sectionId, userId),
+    db.prepare(
+      `DELETE FROM sections WHERE id = ? AND project_id IN (SELECT id FROM projects WHERE user_id = ?)`,
+    ).bind(sectionId, userId),
+  ]);
+  if (results[1].meta.changes === 0) throw new NotFoundError('Section not found');
+}
+
+// ponytail: hardened per the Task 7 reorderProjects fix — checks that every
+// id in orderedIds actually belongs to this project before touching any row,
+// instead of silently no-op'ing on a foreign/nonexistent id.
+export async function reorderSections(
+  db: D1Database, userId: number, projectId: number, orderedIds: number[],
+): Promise<void> {
+  await assertProjectOwned(db, userId, projectId);
+  const placeholders = orderedIds.map(() => '?').join(',');
+  const owned = await db.prepare(
+    `SELECT COUNT(*) AS count FROM sections WHERE project_id = ? AND id IN (${placeholders})`,
+  ).bind(projectId, ...orderedIds).first<{ count: number }>();
+  if ((owned?.count ?? 0) !== orderedIds.length) throw new NotFoundError('Section not found');
+  const statements = orderedIds.map((id, index) =>
+    db.prepare('UPDATE sections SET position = ? WHERE id = ? AND project_id = ?').bind(index + 1, id, projectId),
+  );
+  await db.batch(statements);
+}
