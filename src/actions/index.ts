@@ -50,7 +50,7 @@ export const server = {
     input: reorderProjectsSchema,
     handler: async (input, context) => {
       const user = requireUser(context);
-      await db.reorderProjects(env.DB, user.id, input.orderedIds);
+      await wrapNotFound(() => db.reorderProjects(env.DB, user.id, input.orderedIds));
       return { success: true };
     },
   }),

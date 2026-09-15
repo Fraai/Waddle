@@ -97,4 +97,15 @@ describe('reorderProjects', () => {
     const projects = await db.listProjects(env.DB, userId);
     expect(projects.map((p) => p.name)).toEqual(['C', 'A', 'B']);
   });
+
+  it('throws NotFoundError and changes nothing when an id is not owned by the user', async () => {
+    const a = await db.createProject(env.DB, userId, 'A');
+    const b = await db.createProject(env.DB, userId, 'B');
+    const theirs = await db.createProject(env.DB, otherUserId, 'Theirs');
+
+    await expect(db.reorderProjects(env.DB, userId, [b.id, a.id, theirs.id])).rejects.toBeInstanceOf(db.NotFoundError);
+
+    const projects = await db.listProjects(env.DB, userId);
+    expect(projects.map((p) => p.name)).toEqual(['A', 'B']);
+  });
 });

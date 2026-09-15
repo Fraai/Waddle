@@ -59,6 +59,12 @@ export async function deleteProject(db: D1Database, userId: number, projectId: n
 }
 
 export async function reorderProjects(db: D1Database, userId: number, orderedIds: number[]): Promise<void> {
+  const placeholders = orderedIds.map(() => '?').join(',');
+  const owned = await db.prepare(
+    `SELECT COUNT(*) AS count FROM projects WHERE user_id = ? AND is_inbox = 0 AND id IN (${placeholders})`,
+  ).bind(userId, ...orderedIds).first<{ count: number }>();
+  if ((owned?.count ?? 0) !== orderedIds.length) throw new NotFoundError('Project not found');
+
   const statements = orderedIds.map((id, index) =>
     db.prepare('UPDATE projects SET position = ? WHERE id = ? AND user_id = ? AND is_inbox = 0')
       .bind(index + 1, id, userId),
