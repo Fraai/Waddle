@@ -74,3 +74,52 @@ describe('isAllowedEmail', () => {
     expect(isAllowedEmail('sam@gmail.com')).toBe(false);
   });
 });
+
+import { getGoogleAuthUrl, exchangeGoogleCode } from '../src/utils/auth';
+import { vi, afterEach } from 'vitest';
+
+describe('getGoogleAuthUrl', () => {
+  it('builds a Google OAuth consent URL with the given params', () => {
+    const url = new URL(getGoogleAuthUrl('client-id', 'https://todo.fraai.agency/api/auth/callback', 'state-123'));
+    expect(url.origin + url.pathname).toBe('https://accounts.google.com/o/oauth2/v2/auth');
+    expect(url.searchParams.get('client_id')).toBe('client-id');
+    expect(url.searchParams.get('redirect_uri')).toBe('https://todo.fraai.agency/api/auth/callback');
+    expect(url.searchParams.get('state')).toBe('state-123');
+    expect(url.searchParams.get('scope')).toBe('openid email profile');
+  });
+});
+
+describe('exchangeGoogleCode', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('exchanges a code for the user profile on success', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ access_token: 'tok' }), { status: 200 }))
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ email: 'sam@fraai.agency', name: 'Sam' }), { status: 200 }),
+      );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const profile = await exchangeGoogleCode('code', 'id', 'secret', 'https://todo.fraai.agency/api/auth/callback');
+    expect(profile).toEqual({ email: 'sam@fraai.agency', name: 'Sam' });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('returns null when the token exchange fails', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(new Response('bad request', { status: 400 })));
+    const profile = await exchangeGoogleCode('code', 'id', 'secret', 'https://todo.fraai.agency/api/auth/callback');
+    expect(profile).toBeNull();
+  });
+
+  it('returns null when the userinfo request fails', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ access_token: 'tok' }), { status: 200 }))
+      .mockResolvedValueOnce(new Response('unauthorized', { status: 401 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const profile = await exchangeGoogleCode('code', 'id', 'secret', 'https://todo.fraai.agency/api/auth/callback');
+    expect(profile).toBeNull();
+  });
+});

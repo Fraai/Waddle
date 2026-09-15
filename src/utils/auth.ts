@@ -101,3 +101,42 @@ export function isAllowedEmail(email: string): boolean {
   const e = email.trim().toLowerCase();
   return ALLOWED_DOMAINS.some((d) => e.endsWith(d));
 }
+
+export function getGoogleAuthUrl(clientId: string, redirectUri: string, state: string): string {
+  const params = new URLSearchParams({
+    client_id: clientId,
+    redirect_uri: redirectUri,
+    response_type: 'code',
+    scope: 'openid email profile',
+    state,
+  });
+  return `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
+}
+
+export async function exchangeGoogleCode(
+  code: string,
+  clientId: string,
+  clientSecret: string,
+  redirectUri: string,
+): Promise<{ email: string; name: string } | null> {
+  const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      code,
+      client_id: clientId,
+      client_secret: clientSecret,
+      redirect_uri: redirectUri,
+      grant_type: 'authorization_code',
+    }),
+  });
+  if (!tokenRes.ok) return null;
+  const { access_token } = (await tokenRes.json()) as { access_token: string };
+
+  const userRes = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+    headers: { Authorization: `Bearer ${access_token}` },
+  });
+  if (!userRes.ok) return null;
+  const { email, name } = (await userRes.json()) as { email: string; name: string };
+  return { email, name };
+}
