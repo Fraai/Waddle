@@ -27,3 +27,27 @@ export const reorderSectionsSchema = z.object({
   projectId: idParam,
   orderedIds: z.array(idParam).min(1),
 });
+
+export const createTaskSchema = z.object({
+  projectId: idParam,
+  sectionId: idParam.optional(),
+  parentTaskId: idParam.optional(),
+  title: requiredText('Title is required'),
+  dueDate: dateString.optional(),
+  priority: z.coerce.number().int().min(1).max(4).optional().default(4),
+});
+export const updateTaskSchema = z.object({
+  taskId: idParam,
+  title: requiredText('Title is required').optional(),
+  dueDate: dateString.nullable().optional(),
+  priority: z.coerce.number().int().min(1).max(4).optional(),
+  projectId: idParam.optional(),
+  sectionId: idParam.nullable().optional(),
+});
+export const toggleTaskDoneSchema = z.object({ taskId: idParam });
+export const deleteTaskSchema = z.object({ taskId: idParam });
+export const reorderTasksSchema = z.object({
+  projectId: idParam,
+  sectionId: idParam.nullable().optional(),
+  orderedIds: z.array(idParam).min(1),
+});

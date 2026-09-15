@@ -133,3 +133,146 @@ export async function reorderSections(
   );
   await db.batch(statements);
 }
+
+export interface Task {
+  id: number;
+  user_id: number;
+  project_id: number;
+  section_id: number | null;
+  parent_task_id: number | null;
+  title: string;
+  due_date: string | null;
+  priority: number;
+  done_at: string | null;
+  position: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateTaskInput {
+  projectId: number;
+  sectionId?: number | null;
+  parentTaskId?: number | null;
+  title: string;
+  dueDate?: string | null;
+  priority?: number;
+}
+
+export async function listTasksByProject(db: D1Database, userId: number, projectId: number): Promise<Task[]> {
+  await assertProjectOwned(db, userId, projectId);
+  const { results } = await db.prepare(
+    'SELECT * FROM tasks WHERE project_id = ? AND user_id = ? ORDER BY position ASC',
+  ).bind(projectId, userId).all<Task>();
+  return results;
+}
+
+export async function listOpenDatedTasks(db: D1Database, userId: number): Promise<Task[]> {
+  const { results } = await db.prepare(
+    `SELECT * FROM tasks WHERE user_id = ? AND done_at IS NULL AND due_date IS NOT NULL
+     ORDER BY due_date ASC, priority ASC, position ASC`,
+  ).bind(userId).all<Task>();
+  return results;
+}
+
+export async function createTask(db: D1Database, userId: number, input: CreateTaskInput): Promise<Task> {
+  await assertProjectOwned(db, userId, input.projectId);
+
+  if (input.sectionId != null) {
+    const section = await db.prepare('SELECT id FROM sections WHERE id = ? AND project_id = ?')
+      .bind(input.sectionId, input.projectId).first();
+    if (!section) throw new NotFoundError('Section not found');
+  }
+  if (input.parentTaskId != null) {
+    const parent = await db.prepare('SELECT id FROM tasks WHERE id = ? AND project_id = ? AND user_id = ?')
+      .bind(input.parentTaskId, input.projectId, userId).first();
+    if (!parent) throw new NotFoundError('Parent task not found');
+  }
+
+  const row = await db.prepare(
+    'SELECT COALESCE(MAX(position), 0) AS max FROM tasks WHERE project_id = ? AND section_id IS ?',
+  ).bind(input.projectId, input.sectionId ?? null).first<{ max: number }>();
+  const nextPosition = (row?.max ?? 0) + 1;
+
+  const result = await db.prepare(
+    `INSERT INTO tasks (user_id, project_id, section_id, parent_task_id, title, due_date, priority, position)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING *`,
+  ).bind(
+    userId, input.projectId, input.sectionId ?? null, input.parentTaskId ?? null,
+    input.title, input.dueDate ?? null, input.priority ?? 4, nextPosition,
+  ).first<Task>();
+  if (!result) throw new Error('Failed to create task');
+  return result;
+}
+
+export interface UpdateTaskInput {
+  title?: string;
+  dueDate?: string | null;
+  priority?: number;
+  projectId?: number;
+  sectionId?: number | null;
+}
+
+export async function updateTask(
+  db: D1Database, userId: number, taskId: number, input: UpdateTaskInput,
+): Promise<void> {
+  const task = await db.prepare('SELECT * FROM tasks WHERE id = ? AND user_id = ?')
+    .bind(taskId, userId).first<Task>();
+  if (!task) throw new NotFoundError('Task not found');
+
+  const projectId = input.projectId ?? task.project_id;
+  if (input.projectId != null) await assertProjectOwned(db, userId, input.projectId);
+  if (input.sectionId != null) {
+    const section = await db.prepare('SELECT id FROM sections WHERE id = ? AND project_id = ?')
+      .bind(input.sectionId, projectId).first();
+    if (!section) throw new NotFoundError('Section not found');
+  }
+
+  await db.prepare(
+    `UPDATE tasks SET title = ?, due_date = ?, priority = ?, project_id = ?, section_id = ?, updated_at = datetime('now')
+     WHERE id = ? AND user_id = ?`,
+  ).bind(
+    input.title ?? task.title,
+    input.dueDate !== undefined ? input.dueDate : task.due_date,
+    input.priority ?? task.priority,
+    projectId,
+    input.sectionId !== undefined ? input.sectionId : task.section_id,
+    taskId, userId,
+  ).run();
+}
+
+export async function toggleTaskDone(db: D1Database, userId: number, taskId: number): Promise<void> {
+  const task = await db.prepare('SELECT done_at FROM tasks WHERE id = ? AND user_id = ?')
+    .bind(taskId, userId).first<{ done_at: string | null }>();
+  if (!task) throw new NotFoundError('Task not found');
+
+  await db.prepare(`UPDATE tasks SET done_at = ?, updated_at = datetime('now') WHERE id = ? AND user_id = ?`)
+    .bind(task.done_at ? null : new Date().toISOString(), taskId, userId).run();
+}
+
+export async function deleteTask(db: D1Database, userId: number, taskId: number): Promise<void> {
+  const results = await db.batch([
+    db.prepare('DELETE FROM tasks WHERE parent_task_id = ? AND user_id = ?').bind(taskId, userId),
+    db.prepare('DELETE FROM tasks WHERE id = ? AND user_id = ?').bind(taskId, userId),
+  ]);
+  if (results[1].meta.changes === 0) throw new NotFoundError('Task not found');
+}
+
+// ponytail: hardened per the Task 7/8 reorderX fix — checks that every id in
+// orderedIds actually belongs to this project/user before touching any row,
+// instead of silently no-op'ing on a foreign/nonexistent id.
+export async function reorderTasks(
+  db: D1Database, userId: number, projectId: number, sectionId: number | null, orderedIds: number[],
+): Promise<void> {
+  await assertProjectOwned(db, userId, projectId);
+  const placeholders = orderedIds.map(() => '?').join(',');
+  const owned = await db.prepare(
+    `SELECT COUNT(*) AS count FROM tasks WHERE project_id = ? AND user_id = ? AND id IN (${placeholders})`,
+  ).bind(projectId, userId, ...orderedIds).first<{ count: number }>();
+  if ((owned?.count ?? 0) !== orderedIds.length) throw new NotFoundError('Task not found');
+  const statements = orderedIds.map((id, index) =>
+    db.prepare(
+      'UPDATE tasks SET section_id = ?, position = ? WHERE id = ? AND project_id = ? AND user_id = ?',
+    ).bind(sectionId, index + 1, id, projectId, userId),
+  );
+  await db.batch(statements);
+}

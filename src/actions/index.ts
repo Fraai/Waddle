@@ -4,6 +4,7 @@ import * as db from '../lib/db';
 import {
   createProjectSchema, renameProjectSchema, deleteProjectSchema, reorderProjectsSchema,
   createSectionSchema, renameSectionSchema, deleteSectionSchema, reorderSectionsSchema,
+  createTaskSchema, updateTaskSchema, toggleTaskDoneSchema, deleteTaskSchema, reorderTasksSchema,
 } from '../lib/validation';
 
 function requireUser(context: { locals: App.Locals }) {
@@ -84,6 +85,54 @@ export const server = {
     handler: async (input, context) => {
       const user = requireUser(context);
       await wrapNotFound(() => db.reorderSections(env.DB, user.id, input.projectId, input.orderedIds));
+      return { success: true };
+    },
+  }),
+  createTask: defineAction({
+    accept: 'form',
+    input: createTaskSchema,
+    handler: async (input, context) => {
+      const user = requireUser(context);
+      return wrapNotFound(() => db.createTask(env.DB, user.id, {
+        projectId: input.projectId,
+        sectionId: input.sectionId ?? null,
+        parentTaskId: input.parentTaskId ?? null,
+        title: input.title,
+        dueDate: input.dueDate ?? null,
+        priority: input.priority,
+      }));
+    },
+  }),
+  updateTask: defineAction({
+    input: updateTaskSchema,
+    handler: async (input, context) => {
+      const user = requireUser(context);
+      const { taskId, ...rest } = input;
+      await wrapNotFound(() => db.updateTask(env.DB, user.id, taskId, rest));
+      return { success: true };
+    },
+  }),
+  toggleTaskDone: defineAction({
+    input: toggleTaskDoneSchema,
+    handler: async (input, context) => {
+      const user = requireUser(context);
+      await wrapNotFound(() => db.toggleTaskDone(env.DB, user.id, input.taskId));
+      return { success: true };
+    },
+  }),
+  deleteTask: defineAction({
+    input: deleteTaskSchema,
+    handler: async (input, context) => {
+      const user = requireUser(context);
+      await wrapNotFound(() => db.deleteTask(env.DB, user.id, input.taskId));
+      return { success: true };
+    },
+  }),
+  reorderTasks: defineAction({
+    input: reorderTasksSchema,
+    handler: async (input, context) => {
+      const user = requireUser(context);
+      await wrapNotFound(() => db.reorderTasks(env.DB, user.id, input.projectId, input.sectionId ?? null, input.orderedIds));
       return { success: true };
     },
   }),
