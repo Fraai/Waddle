@@ -41,6 +41,14 @@ describe('createTask', () => {
     ).rejects.toBeInstanceOf(db.NotFoundError);
   });
 
+  it('rejects a parentTaskId that is itself a subtask', async () => {
+    const parent = await db.createTask(env.DB, userId, { projectId, title: 'Parent' });
+    const child = await db.createTask(env.DB, userId, { projectId, parentTaskId: parent.id, title: 'Child' });
+    await expect(
+      db.createTask(env.DB, userId, { projectId, parentTaskId: child.id, title: 'Grandchild' }),
+    ).rejects.toBeInstanceOf(db.NotFoundError);
+  });
+
   it('rejects a project the user does not own', async () => {
     const theirs = await db.createProject(env.DB, otherUserId, 'Theirs');
     await expect(db.createTask(env.DB, userId, { projectId: theirs.id, title: 'Nope' }))

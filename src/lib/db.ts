@@ -183,14 +183,15 @@ export async function createTask(db: D1Database, userId: number, input: CreateTa
     if (!section) throw new NotFoundError('Section not found');
   }
   if (input.parentTaskId != null) {
-    const parent = await db.prepare('SELECT id FROM tasks WHERE id = ? AND project_id = ? AND user_id = ?')
-      .bind(input.parentTaskId, input.projectId, userId).first();
+    const parent = await db.prepare(
+      'SELECT id FROM tasks WHERE id = ? AND project_id = ? AND user_id = ? AND parent_task_id IS NULL',
+    ).bind(input.parentTaskId, input.projectId, userId).first();
     if (!parent) throw new NotFoundError('Parent task not found');
   }
 
   const row = await db.prepare(
-    'SELECT COALESCE(MAX(position), 0) AS max FROM tasks WHERE project_id = ? AND section_id IS ?',
-  ).bind(input.projectId, input.sectionId ?? null).first<{ max: number }>();
+    'SELECT COALESCE(MAX(position), 0) AS max FROM tasks WHERE project_id = ? AND section_id IS ? AND user_id = ?',
+  ).bind(input.projectId, input.sectionId ?? null, userId).first<{ max: number }>();
   const nextPosition = (row?.max ?? 0) + 1;
 
   const result = await db.prepare(
