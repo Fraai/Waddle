@@ -1,9 +1,11 @@
 name = "todo-fraai-agency"
 main = "@astrojs/cloudflare/entrypoints/server"
 compatibility_date = "2026-09-01"
-compatibility_flags = ["nodejs_compat"]
+compatibility_flags = [ "nodejs_compat" ]
 
-route = { pattern = "todo.fraai.agency", custom_domain = true }
+[route]
+pattern = "todo.fraai.agency"
+custom_domain = true
 
 [assets]
 directory = "./dist/client"
@@ -12,5 +14,10 @@ binding = "ASSETS"
 [[d1_databases]]
 binding = "DB"
 database_name = "todo-fraai-agency"
-database_id = "00000000-0000-0000-0000-000000000000"
+database_id = "8d2c2a24-7e00-406b-91a6-dd0d9f8c0e5e"
 migrations_dir = "migrations"
+
+[[kv_namespaces]]
+binding = "SESSION"
+id = "023179a11a59446aabd8e6799d27e066"
+
