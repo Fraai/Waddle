@@ -1,6 +1,7 @@
 import { describe, expect, it, beforeEach } from 'vitest';
 import { env } from 'cloudflare:test';
 import * as db from '../src/lib/db';
+import { createTaskSchema, updateTaskSchema } from '../src/lib/validation';
 
 let userId: number;
 let otherUserId: number;
@@ -15,6 +16,45 @@ beforeEach(async () => {
   otherUserId = other!.id;
   const project = await db.createProject(env.DB, userId, 'Project');
   projectId = project.id;
+});
+
+describe('createTaskSchema', () => {
+  it('accepts a blank dueDate and omits it from the parsed output', () => {
+    const result = createTaskSchema.safeParse({ projectId: '1', title: 'Task', dueDate: '' });
+    expect(result.success).toBe(true);
+    expect(result.data?.dueDate).toBeUndefined();
+  });
+
+  it('accepts a valid dueDate', () => {
+    const result = createTaskSchema.safeParse({ projectId: '1', title: 'Task', dueDate: '2026-01-01' });
+    expect(result.success).toBe(true);
+    expect(result.data?.dueDate).toBe('2026-01-01');
+  });
+
+  it('rejects an invalid dueDate', () => {
+    const result = createTaskSchema.safeParse({ projectId: '1', title: 'Task', dueDate: 'not-a-date' });
+    expect(result.success).toBe(false);
+  });
+});
+
+describe('updateTaskSchema', () => {
+  it('leaves dueDate absent when omitted', () => {
+    const result = updateTaskSchema.safeParse({ taskId: '1' });
+    expect(result.success).toBe(true);
+    expect(result.data?.dueDate).toBeUndefined();
+  });
+
+  it('accepts an explicit null dueDate to clear it', () => {
+    const result = updateTaskSchema.safeParse({ taskId: '1', dueDate: null });
+    expect(result.success).toBe(true);
+    expect(result.data?.dueDate).toBeNull();
+  });
+
+  it('accepts a valid dueDate', () => {
+    const result = updateTaskSchema.safeParse({ taskId: '1', dueDate: '2026-01-01' });
+    expect(result.success).toBe(true);
+    expect(result.data?.dueDate).toBe('2026-01-01');
+  });
 });
 
 describe('createTask', () => {
