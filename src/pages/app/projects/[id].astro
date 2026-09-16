@@ -46,9 +46,9 @@ const openCount = topLevel.filter((t) => t.done_at === null).length;
     </header>
 
     {sectionGroups.map((group) => (
-      <section class="mb-7">
+      <section class="mb-6">
         {group.name && (
-          <h2 class="label-caps mb-2 flex items-center gap-1.5">
+          <h2 class="label-caps mb-2 flex items-center gap-2">
             {group.name}
             <button class="section-delete icon-btn" data-section-id={group.id} title={`Delete ${group.name}`}>
               <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
@@ -101,7 +101,7 @@ const openCount = topLevel.filter((t) => t.done_at === null).length;
                 </ul>
               )}
 
-              <form method="POST" action={actions.createTask} class="subtask-add ml-[1.75rem] pl-3">
+              <form method="POST" action={actions.createTask} class="subtask-add">
                 <input type="hidden" name="projectId" value={projectId} />
                 <input type="hidden" name="parentTaskId" value={task.id} />
                 <input
@@ -117,7 +117,7 @@ const openCount = topLevel.filter((t) => t.done_at === null).length;
         </ul>
 
         {group.tasks.length === 0 && group.name === null && sections.length === 0 && (
-          <p class="empty mb-3">Nothing here yet. Add your first task below.</p>
+          <p class="empty">Nothing here yet. Add your first task below.</p>
         )}
 
         <form method="POST" action={actions.createTask} class="composer mt-2">

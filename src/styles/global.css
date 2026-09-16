@@ -27,6 +27,22 @@
   --p3: #0a84ff;
   --p4: #c3c3c7;
 
+  /* Spacing scale — 4px base, same steps as the Tailwind utilities used in
+     markup, so component CSS and utilities land on the same rhythm. */
+  --space-0-5: 0.125rem;
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --space-7: 3rem;
+
+  /* Derived, not arbitrary: keeps subtasks aligned under the parent title.
+     20px keeps the control itself on the grid, so the indent lands on it too. */
+  --check-size: 1.25rem;
+  --indent-subtask: calc(var(--check-size) + var(--space-2));
+
   --r-sm: 7px;
   --r-md: 11px;
   --r-lg: 16px;
@@ -131,8 +147,8 @@ body {
   background: var(--chrome);
   backdrop-filter: saturate(180%) blur(20px);
   -webkit-backdrop-filter: saturate(180%) blur(20px);
-  padding: 1.75rem 0 1rem;
-  margin-bottom: 0.75rem;
+  padding: var(--space-5) 0 var(--space-4);
+  margin-bottom: var(--space-3);
 }
 
 /* Soft scroll edge where content passes under the header, not a hard rule. */
@@ -152,8 +168,8 @@ body {
 .nav-item {
   display: flex;
   align-items: center;
-  gap: 0.6rem;
-  padding: 0.4rem 0.55rem;
+  gap: var(--space-2);
+  padding: var(--space-2);
   border-radius: var(--r-sm);
   font-size: 0.875rem;
   font-weight: 460;
@@ -226,7 +242,7 @@ body {
 }
 
 .task-row {
-  padding: 0.6rem 0.75rem;
+  padding: var(--space-2) var(--space-3);
   background: var(--surface);
   transition: background var(--fast) var(--ease);
 }
@@ -238,7 +254,7 @@ body {
 .task-main {
   display: flex;
   align-items: flex-start;
-  gap: 0.625rem;
+  gap: var(--space-2);
 }
 
 .task-title {
@@ -264,9 +280,9 @@ body {
   -webkit-appearance: none;
   position: relative;
   flex: none;
-  width: 1.15rem;
-  height: 1.15rem;
-  margin: 0.1rem 0 0;
+  width: var(--check-size);
+  height: var(--check-size);
+  margin: var(--space-0-5) 0 0;
   border: 1.5px solid var(--ring, var(--p4));
   border-radius: 999px;
   cursor: pointer;
@@ -321,7 +337,7 @@ body {
   flex: none;
   font-size: 0.6875rem;
   font-weight: 550;
-  padding: 0.1rem 0.45rem;
+  padding: var(--space-0-5) var(--space-2);
   border-radius: 999px;
   color: var(--text-2);
   background: var(--row-hover);
@@ -370,18 +386,18 @@ h2:hover > .icon-btn,
 }
 
 .subtasks {
-  margin: 0.35rem 0 0 1.75rem;
-  padding-left: 0.75rem;
+  margin: var(--space-1) 0 0 var(--indent-subtask);
+  padding-left: var(--space-3);
   border-left: 1.5px solid var(--hairline);
   display: flex;
   flex-direction: column;
-  gap: 0.3rem;
+  gap: var(--space-1);
 }
 
 .subtask {
   display: flex;
   align-items: flex-start;
-  gap: 0.5rem;
+  gap: var(--space-2);
   font-size: 0.85rem;
 }
 
@@ -394,6 +410,8 @@ h2:hover > .icon-btn,
    in the tab order and :focus-within can open it for keyboard users. */
 .subtask-add {
   height: 0;
+  margin-left: var(--indent-subtask);
+  padding-left: var(--space-3);
   overflow: hidden;
   opacity: 0;
   transition: height var(--med) var(--ease), opacity var(--fast) var(--ease),
@@ -403,7 +421,7 @@ h2:hover > .icon-btn,
 .task-row:hover .subtask-add,
 .subtask-add:focus-within {
   height: 1.5rem;
-  margin-top: 0.3rem;
+  margin-top: var(--space-1);
   opacity: 1;
 }
 
@@ -413,7 +431,7 @@ h2:hover > .icon-btn,
 
 .field {
   font-size: 0.875rem;
-  padding: 0.45rem 0.6rem;
+  padding: var(--space-2) var(--space-3);
   color: var(--text);
   background: var(--surface);
   border: 1px solid var(--hairline);
@@ -434,8 +452,8 @@ h2:hover > .icon-btn,
 .composer {
   display: flex;
   align-items: center;
-  gap: 0.25rem;
-  padding: 0.2rem 0.2rem 0.2rem 0.6rem;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-1) var(--space-1) var(--space-3);
   background: var(--surface);
   border: 1px solid var(--hairline);
   border-radius: var(--r-md);
@@ -455,7 +473,7 @@ h2:hover > .icon-btn,
   background: transparent;
   border: 0;
   outline: none;
-  padding: 0.4rem 0.2rem;
+  padding: var(--space-2) var(--space-1);
 }
 
 .composer input[name="title"] {
@@ -473,10 +491,10 @@ h2:hover > .icon-btn,
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.5rem;
+  gap: var(--space-2);
   font-size: 0.875rem;
   font-weight: 550;
-  padding: 0.5rem 0.9rem;
+  padding: var(--space-2) var(--space-4);
   border-radius: var(--r-sm);
   transition: background var(--fast) var(--ease), transform var(--fast) var(--ease),
     color var(--fast) var(--ease);
@@ -528,7 +546,7 @@ h2:hover > .icon-btn,
    ========================================================================== */
 
 .empty {
-  padding: 2.25rem 1rem;
+  padding: var(--space-6) var(--space-4);
   text-align: center;
   font-size: 0.875rem;
   color: var(--text-3);

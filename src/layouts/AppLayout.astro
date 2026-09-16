@@ -68,8 +68,8 @@ const projectHue = (id: number) => (id * 137.5) % 360;
         </a>
       )}
 
-      <div class="label-caps mt-5 mb-1 px-2">Projects</div>
-      <ul id="project-list" class="flex flex-col gap-0.5">
+      <div class="label-caps mt-4 mb-2 px-2">Projects</div>
+      <ul id="project-list" class="flex flex-col gap-1">
         {otherProjects.map((project) => (
           <li data-project-id={project.id} class="flex items-center gap-1">
             <a
@@ -91,7 +91,7 @@ const projectHue = (id: number) => (id * 137.5) % 360;
         ))}
       </ul>
 
-      <form method="POST" action={actions.createProject} class="mt-2 px-0.5">
+      <form method="POST" action={actions.createProject} class="mt-2">
         <label class="sr-only" for="new-project">New project</label>
         <input id="new-project" name="name" placeholder="New project" class="field w-full" required />
       </form>
@@ -101,7 +101,7 @@ const projectHue = (id: number) => (id * 137.5) % 360;
       </form>
     </aside>
 
-    <main class="min-w-0 flex-1 px-8 pb-16">
+    <main class="min-w-0 flex-1 px-8 pb-12">
       <slot />
     </main>
   </body>

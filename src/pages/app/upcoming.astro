@@ -22,7 +22,7 @@ const groups = groupUpcoming(tasks, today);
     {groups.length === 0 && <p class="empty">No upcoming tasks.</p>}
 
     {groups.map((group) => (
-      <section class="mb-7">
+      <section class="mb-6">
         <h2 class="label-caps mb-2">{formatDateHeading(group.date, today)}</h2>
         <ul class="task-list">
           {group.tasks.map((task) => (

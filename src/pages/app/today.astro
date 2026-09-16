@@ -18,7 +18,7 @@ const { overdue, today: dueToday } = splitOverdueAndToday(tasks, today);
     </header>
 
     {overdue.length > 0 && (
-      <section class="mb-7">
+      <section class="mb-6">
         <h2 class="label-caps mb-2" style="color: var(--danger)">Overdue</h2>
         <ul class="task-list">
           {overdue.map((task) => (
