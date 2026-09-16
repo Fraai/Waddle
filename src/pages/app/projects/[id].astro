@@ -12,6 +12,14 @@ const projects = await db.listProjects(env.DB, user.id);
 const project = projects.find((p) => p.id === projectId);
 if (!project) return Astro.redirect('/app/today');
 
+// Redirect after a successful form POST (createTask/createSection) so a
+// browser refresh doesn't resubmit the form.
+const taskResult = Astro.getActionResult(actions.createTask);
+const sectionResult = Astro.getActionResult(actions.createSection);
+if ((taskResult && !taskResult.error) || (sectionResult && !sectionResult.error)) {
+  return Astro.redirect(Astro.url.pathname);
+}
+
 const [sections, tasks] = await Promise.all([
   db.listSections(env.DB, user.id, projectId),
   db.listTasksByProject(env.DB, user.id, projectId),
@@ -32,7 +40,7 @@ const sectionGroups = [
 ];
 ---
 <AppLayout title={project.name}>
-  <div data-project-id={projectId}>
+  <div data-project-root={projectId}>
     <h1 class="text-xl font-semibold mb-4">{project.name}</h1>
 
     {sectionGroups.map((group) => (
@@ -68,7 +76,7 @@ const sectionGroups = [
               <form method="POST" action={actions.createTask} class="ml-6 mt-1">
                 <input type="hidden" name="projectId" value={projectId} />
                 <input type="hidden" name="parentTaskId" value={task.id} />
-                <input name="title" placeholder="Add subtask" class="text-xs border rounded px-1" />
+                <input name="title" placeholder="Add subtask" class="text-xs border rounded px-1" required />
               </form>
             </li>
           ))}
@@ -77,6 +85,13 @@ const sectionGroups = [
           <input type="hidden" name="projectId" value={projectId} />
           {group.id !== null && <input type="hidden" name="sectionId" value={group.id} />}
           <input name="title" placeholder="Add task" class="text-sm border rounded px-2 py-1 flex-1" required />
+          <input type="date" name="dueDate" class="text-sm border rounded px-2 py-1" />
+          <select name="priority" class="text-sm border rounded px-2 py-1">
+            <option value="4" selected>P4</option>
+            <option value="3">P3</option>
+            <option value="2">P2</option>
+            <option value="1">P1</option>
+          </select>
         </form>
       </section>
     ))}

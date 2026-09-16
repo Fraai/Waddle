@@ -2,7 +2,13 @@ import { z } from 'zod';
 
 export const requiredText = (message: string) => z.string().trim().min(1, message);
 export const idParam = z.coerce.number().int().positive();
-export const dateString = z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/, 'Must be a valid date (YYYY-MM-DD)');
+// ponytail: a blank <input type="date"> submits "" via FormData, not absence
+// of the field — preprocess treats "" the same as undefined so .optional()
+// (on both createTaskSchema and updateTaskSchema below) actually applies.
+export const dateString = z.preprocess(
+  (v) => (v === '' ? undefined : v),
+  z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/, 'Must be a valid date (YYYY-MM-DD)'),
+);
 
 export const createProjectSchema = z.object({
   name: requiredText('Name is required'),
