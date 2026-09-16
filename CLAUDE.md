@@ -27,7 +27,7 @@ In Google Cloud Console, create an OAuth 2.0 Web Application credential with the
 
 ## DB binding
 
-`DB` — Cloudflare D1, bound in `wrangler.toml`. Apply migrations: `npm run db:migrate:local` (add `:remote` for production).
+`DB` — Cloudflare D1, bound in `wrangler.toml`. Apply migrations: `npm run db:migrate:local` (add `:remote` for production). `wrangler.toml`'s `database_id` is still the placeholder `00000000-...` — replace it with a real id from `wrangler d1 create todo-fraai-agency` before `npm run deploy` will work.
 
 ## Dev commands
 
@@ -48,7 +48,7 @@ npm run deploy    # Build and deploy to Cloudflare
 - `src/lib/dates.ts` — Today/Upcoming date-grouping (Europe/Brussels timezone)
 - `src/actions/index.ts` — all mutations (Astro Actions)
 - `src/pages/app/` — Today, Upcoming, and per-project views
-- `migrations/0001_init.sql` — D1 schema
+- `migrations/` — D1 schema (`0001_init.sql` base schema, `0002_unique_inbox_per_user.sql` adds the one-inbox-per-user constraint)
 
 ## What was intentionally left out of the MVP
 
