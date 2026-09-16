@@ -87,6 +87,7 @@ describe('getGoogleAuthUrl', () => {
     expect(url.searchParams.get('redirect_uri')).toBe('https://todo.fraai.agency/api/auth/callback');
     expect(url.searchParams.get('state')).toBe('state-123');
     expect(url.searchParams.get('scope')).toBe('openid email profile');
+    expect(url.searchParams.get('hd')).toBe('fraai.agency');
   });
 });
 
@@ -99,13 +100,31 @@ describe('exchangeGoogleCode', () => {
     const fetchMock = vi.fn()
       .mockResolvedValueOnce(new Response(JSON.stringify({ access_token: 'tok' }), { status: 200 }))
       .mockResolvedValueOnce(
-        new Response(JSON.stringify({ email: 'sam@fraai.agency', name: 'Sam' }), { status: 200 }),
+        new Response(
+          JSON.stringify({ email: 'sam@fraai.agency', name: 'Sam', verified_email: true }),
+          { status: 200 },
+        ),
       );
     vi.stubGlobal('fetch', fetchMock);
 
     const profile = await exchangeGoogleCode('code', 'id', 'secret', 'https://todo.fraai.agency/api/auth/callback');
     expect(profile).toEqual({ email: 'sam@fraai.agency', name: 'Sam' });
     expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('returns null when the userinfo email is not verified', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ access_token: 'tok' }), { status: 200 }))
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({ email: 'sam@fraai.agency', name: 'Sam', verified_email: false }),
+          { status: 200 },
+        ),
+      );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const profile = await exchangeGoogleCode('code', 'id', 'secret', 'https://todo.fraai.agency/api/auth/callback');
+    expect(profile).toBeNull();
   });
 
   it('returns null when the token exchange fails', async () => {

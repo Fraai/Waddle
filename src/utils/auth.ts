@@ -109,6 +109,7 @@ export function getGoogleAuthUrl(clientId: string, redirectUri: string, state: s
     response_type: 'code',
     scope: 'openid email profile',
     state,
+    hd: 'fraai.agency',
   });
   return `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
 }
@@ -137,6 +138,11 @@ export async function exchangeGoogleCode(
     headers: { Authorization: `Bearer ${access_token}` },
   });
   if (!userRes.ok) return null;
-  const { email, name } = (await userRes.json()) as { email: string; name: string };
+  const { email, name, verified_email } = (await userRes.json()) as {
+    email: string;
+    name: string;
+    verified_email?: boolean;
+  };
+  if (verified_email !== true) return null;
   return { email, name };
 }
