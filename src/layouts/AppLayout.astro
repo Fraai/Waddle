@@ -10,10 +10,18 @@ interface Props {
 const { title } = Astro.props;
 const user = Astro.locals.user!;
 const projects = await listProjects(env.DB, user.id);
-const inbox = projects.find((p) => p.is_inbox === 1)!;
+const inbox = projects.find((p) => p.is_inbox === 1);
+if (!inbox) return Astro.redirect('/login');
 const otherProjects = projects.filter((p) => p.is_inbox === 0);
 const path = Astro.url.pathname;
 const isActive = (href: string) => path === href;
+
+// Redirect after a successful createProject form POST so a browser refresh
+// doesn't resubmit the form.
+const projectResult = Astro.getActionResult(actions.createProject);
+if (projectResult && !projectResult.error) {
+  return Astro.redirect(Astro.url.pathname);
+}
 ---
 <!doctype html>
 <html lang="en">
@@ -56,6 +64,9 @@ const isActive = (href: string) => path === href;
       </ul>
       <form method="POST" action={actions.createProject} class="mt-2">
         <input name="name" placeholder="New project" class="w-full text-sm border rounded px-2 py-1" required />
+      </form>
+      <form method="POST" action="/api/auth/signout" class="mt-auto pt-4">
+        <button type="submit" class="text-xs text-gray-500 hover:text-gray-800">Sign out</button>
       </form>
     </aside>
     <main class="flex-1 p-6">
