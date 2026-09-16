@@ -1,9 +1,15 @@
 import { defineMiddleware } from 'astro:middleware';
+import { getActionContext } from 'astro:actions';
 import { env } from 'cloudflare:workers';
 import { parseCookies, verifyJWT } from './utils/auth';
 
+function noindex(response: Response): Response {
+  response.headers.set('X-Robots-Tag', 'noindex, nofollow');
+  return response;
+}
+
 export const onRequest = defineMiddleware(async (context, next) => {
-  const { request, locals, redirect } = context;
+  const { request, locals } = context;
   const url = new URL(request.url);
 
   locals.user = null;
@@ -17,12 +23,22 @@ export const onRequest = defineMiddleware(async (context, next) => {
   }
 
   if (url.pathname.startsWith('/app') && !locals.user) {
-    const response = new Response(null, { status: 302, headers: { Location: '/login' } });
-    response.headers.set('X-Robots-Tag', 'noindex, nofollow');
-    return response;
+    return noindex(new Response(null, { status: 302, headers: { Location: '/login' } }));
   }
 
-  const response = await next();
-  response.headers.set('X-Robots-Tag', 'noindex, nofollow');
-  return response;
+  // Form-submitted actions are handled here rather than in a page, because a
+  // form can live in the shared layout: `Astro.redirect()` returned from a
+  // layout doesn't redirect, it just renders nothing. On success we send a
+  // 303 back to the same path so the URL keeps no ?_action= and a refresh
+  // can't resubmit. Errors fall through and render the page with the result.
+  const { action, setActionResult, serializeActionResult } = getActionContext(context);
+  if (action?.calledFrom === 'form') {
+    const result = await action.handler();
+    if (!result.error) {
+      return noindex(new Response(null, { status: 303, headers: { Location: url.pathname } }));
+    }
+    setActionResult(action.name, serializeActionResult(result));
+  }
+
+  return noindex(await next());
 });

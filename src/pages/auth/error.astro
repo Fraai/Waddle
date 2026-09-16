@@ -16,10 +16,25 @@ const messages: Record<string, string> = {
     <meta name="robots" content="noindex, nofollow" />
     <title>Sign-in error · Todo</title>
   </head>
-  <body class="min-h-screen flex items-center justify-center bg-gray-50">
-    <div class="text-center max-w-sm">
-      <p class="text-red-600 mb-4">{messages[reason] ?? messages.unknown}</p>
-      <a href="/login" class="underline">Back to sign in</a>
-    </div>
+  <body class="grid min-h-screen place-items-center p-6">
+    <main
+      class="w-full max-w-sm rounded-[var(--r-lg)] p-8 text-center"
+      style="background: var(--surface); border: 1px solid var(--hairline); box-shadow: var(--shadow-2)"
+    >
+      <div
+        class="mx-auto mb-5 grid h-12 w-12 place-items-center rounded-[var(--r-md)]"
+        style="background: color-mix(in oklab, var(--danger) 12%, transparent); color: var(--danger)"
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" class="h-6 w-6">
+          <path d="M12 7.5v5.5M12 16.5v.01" />
+          <circle cx="12" cy="12" r="9" />
+        </svg>
+      </div>
+
+      <h1 class="text-lg font-semibold tracking-[-0.015em]">Couldn't sign you in</h1>
+      <p class="mt-2 text-sm" style="color: var(--text-2)">{messages[reason] ?? messages.unknown}</p>
+
+      <a href="/login" class="btn btn--primary mt-6 w-full">Back to sign in</a>
+    </main>
   </body>
 </html>

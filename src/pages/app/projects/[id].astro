@@ -3,6 +3,8 @@ import AppLayout from '../../../layouts/AppLayout.astro';
 import { actions } from 'astro:actions';
 import { env } from 'cloudflare:workers';
 import * as db from '../../../lib/db';
+import { todayISO } from '../../../lib/dates';
+import { formatDate } from '../../../lib/format';
 
 const user = Astro.locals.user!;
 const projectId = Number(Astro.params.id);
@@ -11,14 +13,6 @@ if (!Number.isInteger(projectId)) return Astro.redirect('/app/today');
 const projects = await db.listProjects(env.DB, user.id);
 const project = projects.find((p) => p.id === projectId);
 if (!project) return Astro.redirect('/app/today');
-
-// Redirect after a successful form POST (createTask/createSection) so a
-// browser refresh doesn't resubmit the form.
-const taskResult = Astro.getActionResult(actions.createTask);
-const sectionResult = Astro.getActionResult(actions.createSection);
-if ((taskResult && !taskResult.error) || (sectionResult && !sectionResult.error)) {
-  return Astro.redirect(Astro.url.pathname);
-}
 
 const [sections, tasks] = await Promise.all([
   db.listSections(env.DB, user.id, projectId),
@@ -38,67 +32,119 @@ const sectionGroups = [
   { id: null as number | null, name: null as string | null, tasks: topLevel.filter((t) => t.section_id === null) },
   ...sections.map((s) => ({ id: s.id, name: s.name, tasks: topLevel.filter((t) => t.section_id === s.id) })),
 ];
+
+const today = todayISO();
+const openCount = topLevel.filter((t) => t.done_at === null).length;
 ---
 <AppLayout title={project.name}>
-  <div data-project-root={projectId}>
-    <h1 class="text-xl font-semibold mb-4">{project.name}</h1>
+  <div data-project-root={projectId} class="mx-auto max-w-2xl">
+    <header class="page-head">
+      <h1 class="page-title">{project.name}</h1>
+      <p class="mt-1 text-sm" style="color: var(--text-2)" data-open-count={openCount}>
+        {openCount === 0 ? 'All clear' : `${openCount} open ${openCount === 1 ? 'task' : 'tasks'}`}
+      </p>
+    </header>
 
     {sectionGroups.map((group) => (
-      <section class="mb-6">
+      <section class="mb-7">
         {group.name && (
-          <h2 class="text-sm font-medium text-gray-500 mb-2 flex items-center gap-2">
+          <h2 class="label-caps mb-2 flex items-center gap-1.5">
             {group.name}
-            <button class="section-delete text-xs text-gray-400 hover:text-red-500" data-section-id={group.id}>
-              &times;
+            <button class="section-delete icon-btn" data-section-id={group.id} title={`Delete ${group.name}`}>
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+                <path d="M4 4l8 8M12 4l-8 8" />
+              </svg>
+              <span class="sr-only">Delete section</span>
             </button>
           </h2>
         )}
-        <ul class="task-list flex flex-col gap-1" data-section-id={group.id ?? ''}>
+
+        <ul class="task-list" data-section-id={group.id ?? ''}>
           {group.tasks.map((task) => (
-            <li data-task-id={task.id} class="border rounded p-2">
-              <div class="flex items-center gap-2">
-                <input type="checkbox" class="task-toggle" data-task-id={task.id} checked={task.done_at !== null} />
-                <span class={task.done_at ? 'line-through text-gray-400' : ''}>{task.title}</span>
-                {task.due_date && <span class="text-xs text-gray-500">{task.due_date}</span>}
-                <span class="text-xs text-gray-400">P{task.priority}</span>
-                <button class="task-delete text-xs text-red-500" data-task-id={task.id}>Delete</button>
+            <li data-task-id={task.id} data-priority={task.priority} class="task-row">
+              <div class="task-main">
+                <input
+                  type="checkbox"
+                  class="task-toggle check"
+                  data-task-id={task.id}
+                  checked={task.done_at !== null}
+                  aria-label={`Mark "${task.title}" done`}
+                />
+                <span class="task-title" data-done={task.done_at ? '' : undefined}>{task.title}</span>
+                {task.due_date && (
+                  <span class:list={['pill', task.due_date < today && !task.done_at && 'pill--overdue']}>
+                    {formatDate(task.due_date)}
+                  </span>
+                )}
+                <button class="task-delete icon-btn" data-task-id={task.id} title={`Delete "${task.title}"`}>
+                  <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+                    <path d="M4 4l8 8M12 4l-8 8" />
+                  </svg>
+                  <span class="sr-only">Delete task</span>
+                </button>
               </div>
+
               {(subtasksByParent.get(task.id) ?? []).length > 0 && (
-                <ul class="ml-6 mt-1 flex flex-col gap-1">
+                <ul class="subtasks">
                   {(subtasksByParent.get(task.id) ?? []).map((sub) => (
-                    <li class="flex items-center gap-2 text-sm">
-                      <input type="checkbox" class="task-toggle" data-task-id={sub.id} checked={sub.done_at !== null} />
-                      <span class={sub.done_at ? 'line-through text-gray-400' : ''}>{sub.title}</span>
+                    <li class="subtask" data-priority={sub.priority}>
+                      <input
+                        type="checkbox"
+                        class="task-toggle check"
+                        data-task-id={sub.id}
+                        checked={sub.done_at !== null}
+                        aria-label={`Mark "${sub.title}" done`}
+                      />
+                      <span class="task-title" data-done={sub.done_at ? '' : undefined}>{sub.title}</span>
                     </li>
                   ))}
                 </ul>
               )}
-              <form method="POST" action={actions.createTask} class="ml-6 mt-1">
+
+              <form method="POST" action={actions.createTask} class="subtask-add ml-[1.75rem] pl-3">
                 <input type="hidden" name="projectId" value={projectId} />
                 <input type="hidden" name="parentTaskId" value={task.id} />
-                <input name="title" placeholder="Add subtask" class="text-xs border rounded px-1" required />
+                <input
+                  name="title"
+                  placeholder="Add subtask"
+                  aria-label="Add subtask"
+                  class="w-full border-0 bg-transparent p-0 text-[0.8125rem] outline-none placeholder:text-[var(--text-3)]"
+                  required
+                />
               </form>
             </li>
           ))}
         </ul>
-        <form method="POST" action={actions.createTask} class="mt-2 flex gap-2">
+
+        {group.tasks.length === 0 && group.name === null && sections.length === 0 && (
+          <p class="empty mb-3">Nothing here yet. Add your first task below.</p>
+        )}
+
+        <form method="POST" action={actions.createTask} class="composer mt-2">
           <input type="hidden" name="projectId" value={projectId} />
           {group.id !== null && <input type="hidden" name="sectionId" value={group.id} />}
-          <input name="title" placeholder="Add task" class="text-sm border rounded px-2 py-1 flex-1" required />
-          <input type="date" name="dueDate" class="text-sm border rounded px-2 py-1" />
-          <select name="priority" class="text-sm border rounded px-2 py-1">
+          <input name="title" placeholder="Add task" aria-label="Task title" required />
+          <input type="date" name="dueDate" aria-label="Due date" />
+          <select name="priority" aria-label="Priority">
             <option value="4" selected>P4</option>
             <option value="3">P3</option>
             <option value="2">P2</option>
             <option value="1">P1</option>
           </select>
+          <button type="submit" class="btn btn--submit" title="Add task">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+              <path d="M8 3.5v9M3.5 8h9" />
+            </svg>
+            <span class="sr-only">Add task</span>
+          </button>
         </form>
       </section>
     ))}
 
-    <form method="POST" action={actions.createSection} class="mt-4">
+    <form method="POST" action={actions.createSection} class="mt-6">
       <input type="hidden" name="projectId" value={projectId} />
-      <input name="name" placeholder="Add section" class="text-sm border rounded px-2 py-1" required />
+      <label class="sr-only" for="new-section">New section</label>
+      <input id="new-section" name="name" placeholder="Add section" class="field w-56" required />
     </form>
   </div>
 </AppLayout>

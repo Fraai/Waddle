@@ -10,18 +10,17 @@ interface Props {
 const { title } = Astro.props;
 const user = Astro.locals.user!;
 const projects = await listProjects(env.DB, user.id);
+// Every user gets an Inbox at provisioning, so this should always be found —
+// but a layout can't redirect (a returned Response renders nothing), so treat
+// it as "no Inbox link" rather than crashing every /app page.
 const inbox = projects.find((p) => p.is_inbox === 1);
-if (!inbox) return Astro.redirect('/login');
 const otherProjects = projects.filter((p) => p.is_inbox === 0);
 const path = Astro.url.pathname;
 const isActive = (href: string) => path === href;
 
-// Redirect after a successful createProject form POST so a browser refresh
-// doesn't resubmit the form.
-const projectResult = Astro.getActionResult(actions.createProject);
-if (projectResult && !projectResult.error) {
-  return Astro.redirect(Astro.url.pathname);
-}
+// Golden-angle hue spacing gives every project a distinct, stable colour
+// without needing to store one.
+const projectHue = (id: number) => (id * 137.5) % 360;
 ---
 <!doctype html>
 <html lang="en">
@@ -31,45 +30,78 @@ if (projectResult && !projectResult.error) {
     <meta name="robots" content="noindex, nofollow" />
     <title>{title} · Todo</title>
   </head>
-  <body class="flex min-h-screen bg-gray-50 text-gray-900">
-    <aside class="w-64 shrink-0 border-r border-gray-200 p-4 flex flex-col gap-1">
-      <div class="font-semibold mb-4">Todo</div>
-      <a href="/app/today" class={`px-2 py-1 rounded ${isActive('/app/today') ? 'bg-gray-200' : ''}`}>Today</a>
-      <a href="/app/upcoming" class={`px-2 py-1 rounded ${isActive('/app/upcoming') ? 'bg-gray-200' : ''}`}>Upcoming</a>
-      <a
-        href={`/app/projects/${inbox.id}`}
-        class={`px-2 py-1 rounded ${isActive(`/app/projects/${inbox.id}`) ? 'bg-gray-200' : ''}`}
-      >
-        Inbox
+  <body class="flex min-h-screen">
+    <aside class="sidebar sticky top-0 flex h-screen w-64 shrink-0 flex-col gap-1 p-3">
+      <div class="px-2 pb-4 pt-2">
+        <div class="text-[0.9375rem] font-semibold tracking-[-0.01em]">Todo</div>
+        <div class="text-xs" style="color: var(--text-3)">{user.email}</div>
+      </div>
+
+      <a href="/app/today" class="nav-item" data-astro-prefetch aria-current={isActive('/app/today') ? 'page' : undefined}>
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round">
+          <circle cx="8" cy="8" r="5.25" />
+          <path d="M8 5.2V8l1.9 1.4" />
+        </svg>
+        Today
       </a>
-      <div class="mt-4 text-xs uppercase text-gray-500">Projects</div>
-      <ul id="project-list" class="flex flex-col gap-1">
+
+      <a href="/app/upcoming" class="nav-item" data-astro-prefetch aria-current={isActive('/app/upcoming') ? 'page' : undefined}>
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round">
+          <rect x="2.4" y="3.2" width="11.2" height="10.4" rx="2" />
+          <path d="M2.4 6.4h11.2M5.6 2v2.4M10.4 2v2.4" />
+        </svg>
+        Upcoming
+      </a>
+
+      {inbox && (
+        <a
+          href={`/app/projects/${inbox.id}`}
+          class="nav-item"
+          data-astro-prefetch
+          aria-current={isActive(`/app/projects/${inbox.id}`) ? 'page' : undefined}
+        >
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round">
+            <path d="M2.2 9.2 4 3.4h8l1.8 5.8v3a1 1 0 0 1-1 1H3.2a1 1 0 0 1-1-1z" />
+            <path d="M2.2 9.2h3.2l.8 1.6h3.6l.8-1.6h3.2" />
+          </svg>
+          Inbox
+        </a>
+      )}
+
+      <div class="label-caps mt-5 mb-1 px-2">Projects</div>
+      <ul id="project-list" class="flex flex-col gap-0.5">
         {otherProjects.map((project) => (
-          <li data-project-id={project.id} class="flex items-center gap-1 group">
+          <li data-project-id={project.id} class="flex items-center gap-1">
             <a
               href={`/app/projects/${project.id}`}
-              class={`flex-1 block px-2 py-1 rounded ${isActive(`/app/projects/${project.id}`) ? 'bg-gray-200' : ''}`}
+              class="nav-item flex-1"
+              data-astro-prefetch
+              aria-current={isActive(`/app/projects/${project.id}`) ? 'page' : undefined}
             >
-              {project.name}
+              <span class="project-dot" style={`--dot: hsl(${projectHue(project.id)} 62% 52%)`}></span>
+              <span class="truncate">{project.name}</span>
             </a>
-            <button
-              class="project-delete text-xs text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 px-1"
-              data-project-id={project.id}
-              title="Delete project"
-            >
-              &times;
+            <button class="project-delete icon-btn" data-project-id={project.id} title={`Delete ${project.name}`}>
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+                <path d="M4 4l8 8M12 4l-8 8" />
+              </svg>
+              <span class="sr-only">Delete project</span>
             </button>
           </li>
         ))}
       </ul>
-      <form method="POST" action={actions.createProject} class="mt-2">
-        <input name="name" placeholder="New project" class="w-full text-sm border rounded px-2 py-1" required />
+
+      <form method="POST" action={actions.createProject} class="mt-2 px-0.5">
+        <label class="sr-only" for="new-project">New project</label>
+        <input id="new-project" name="name" placeholder="New project" class="field w-full" required />
       </form>
-      <form method="POST" action="/api/auth/signout" class="mt-auto pt-4">
-        <button type="submit" class="text-xs text-gray-500 hover:text-gray-800">Sign out</button>
+
+      <form method="POST" action="/api/auth/signout" class="mt-auto pt-3">
+        <button type="submit" class="btn btn--ghost w-full justify-start text-xs">Sign out</button>
       </form>
     </aside>
-    <main class="flex-1 p-6">
+
+    <main class="min-w-0 flex-1 px-8 pb-16">
       <slot />
     </main>
   </body>

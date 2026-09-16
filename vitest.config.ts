@@ -9,6 +9,7 @@ export default defineConfig(async () => {
     resolve: {
       alias: {
         'astro:middleware': new URL('./test/mock-astro-middleware.ts', import.meta.url).pathname,
+        'astro:actions': new URL('./test/mock-astro-actions.ts', import.meta.url).pathname,
       },
     },
     plugins: [

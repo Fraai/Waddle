@@ -9,12 +9,36 @@ import '../styles/global.css';
     <meta name="robots" content="noindex, nofollow" />
     <title>Sign in · Todo</title>
   </head>
-  <body class="min-h-screen flex items-center justify-center bg-gray-50">
-    <div class="text-center">
-      <h1 class="text-2xl font-semibold mb-6">Todo</h1>
-      <a href="/api/auth/google" class="inline-block px-4 py-2 rounded bg-black text-white">
+  <body class="grid min-h-screen place-items-center p-6">
+    <main
+      class="w-full max-w-sm rounded-[var(--r-lg)] p-8 text-center"
+      style="background: var(--surface); border: 1px solid var(--hairline); box-shadow: var(--shadow-2)"
+    >
+      <div
+        class="mx-auto mb-5 grid h-12 w-12 place-items-center rounded-[var(--r-md)]"
+        style="background: var(--accent-soft); color: var(--accent)"
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-6 w-6">
+          <path d="M4.5 12.5l5 5 10-11" />
+        </svg>
+      </div>
+
+      <h1 class="text-2xl font-semibold tracking-[-0.02em]">Todo</h1>
+      <p class="mx-auto mt-2 max-w-[22ch] text-sm" style="color: var(--text-2)">
+        The internal task list for the fraai.agency team.
+      </p>
+
+      <a href="/api/auth/google" class="btn btn--primary mt-6 w-full">
+        <svg viewBox="0 0 18 18" class="h-4 w-4" aria-hidden="true">
+          <path fill="#fff" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.92c1.7-1.57 2.68-3.88 2.68-6.62z" opacity=".9" />
+          <path fill="#fff" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.92-2.26c-.8.54-1.84.86-3.04.86-2.34 0-4.32-1.58-5.03-3.7H.96v2.33A9 9 0 0 0 9 18z" opacity=".75" />
+          <path fill="#fff" d="M3.97 10.72a5.4 5.4 0 0 1 0-3.44V4.95H.96a9 9 0 0 0 0 8.1l3.01-2.33z" opacity=".6" />
+          <path fill="#fff" d="M9 3.58c1.32 0 2.5.45 3.44 1.35l2.58-2.58C13.46.9 11.43 0 9 0A9 9 0 0 0 .96 4.95l3.01 2.33C4.68 5.16 6.66 3.58 9 3.58z" opacity=".85" />
+        </svg>
         Sign in with Google
       </a>
-    </div>
+
+      <p class="mt-4 text-xs" style="color: var(--text-3)">@fraai.agency accounts only</p>
+    </main>
   </body>
 </html>
