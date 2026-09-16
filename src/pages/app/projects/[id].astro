@@ -49,7 +49,13 @@ const openCount = topLevel.filter((t) => t.done_at === null).length;
       <section class="mb-6">
         {group.name && (
           <h2 class="label-caps mb-2 flex items-center gap-2">
-            {group.name}
+            <span class="section-name">{group.name}</span>
+            <button class="section-rename icon-btn" data-section-id={group.id} title={`Rename ${group.name}`}>
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M11.3 2.7a1.2 1.2 0 0 1 1.7 1.7L5.6 12l-2.4.7.7-2.4z" />
+              </svg>
+              <span class="sr-only">Rename section</span>
+            </button>
             <button class="section-delete icon-btn" data-section-id={group.id} title={`Delete ${group.name}`}>
               <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
                 <path d="M4 4l8 8M12 4l-8 8" />
@@ -61,7 +67,7 @@ const openCount = topLevel.filter((t) => t.done_at === null).length;
 
         <ul class="task-list" data-section-id={group.id ?? ''}>
           {group.tasks.map((task) => (
-            <li data-task-id={task.id} data-priority={task.priority} class="task-row">
+            <li data-task-id={task.id} data-priority={task.priority} data-due-date={task.due_date ?? ''} class="task-row">
               <div class="task-main">
                 <input
                   type="checkbox"
@@ -87,15 +93,17 @@ const openCount = topLevel.filter((t) => t.done_at === null).length;
               {(subtasksByParent.get(task.id) ?? []).length > 0 && (
                 <ul class="subtasks">
                   {(subtasksByParent.get(task.id) ?? []).map((sub) => (
-                    <li class="subtask" data-priority={sub.priority}>
-                      <input
-                        type="checkbox"
-                        class="task-toggle check"
-                        data-task-id={sub.id}
-                        checked={sub.done_at !== null}
-                        aria-label={`Mark "${sub.title}" done`}
-                      />
-                      <span class="task-title" data-done={sub.done_at ? '' : undefined}>{sub.title}</span>
+                    <li class="subtask" data-task-id={sub.id} data-priority={sub.priority} data-due-date={sub.due_date ?? ''}>
+                      <div class="task-main">
+                        <input
+                          type="checkbox"
+                          class="task-toggle check"
+                          data-task-id={sub.id}
+                          checked={sub.done_at !== null}
+                          aria-label={`Mark "${sub.title}" done`}
+                        />
+                        <span class="task-title" data-done={sub.done_at ? '' : undefined}>{sub.title}</span>
+                      </div>
                     </li>
                   ))}
                 </ul>

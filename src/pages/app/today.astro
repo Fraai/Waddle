@@ -1,12 +1,17 @@
 ---
 import AppLayout from '../../layouts/AppLayout.astro';
+import { actions } from 'astro:actions';
 import { env } from 'cloudflare:workers';
-import { listOpenDatedTasks } from '../../lib/db';
+import { listOpenDatedTasks, listProjects } from '../../lib/db';
 import { todayISO, splitOverdueAndToday } from '../../lib/dates';
 import { formatDate } from '../../lib/format';
 
 const user = Astro.locals.user!;
-const tasks = await listOpenDatedTasks(env.DB, user.id);
+const [tasks, projects] = await Promise.all([
+  listOpenDatedTasks(env.DB, user.id),
+  listProjects(env.DB, user.id),
+]);
+const inbox = projects.find((p) => p.is_inbox === 1);
 const today = todayISO();
 const { overdue, today: dueToday } = splitOverdueAndToday(tasks, today);
 ---
@@ -20,9 +25,9 @@ const { overdue, today: dueToday } = splitOverdueAndToday(tasks, today);
     {overdue.length > 0 && (
       <section class="mb-6">
         <h2 class="label-caps mb-2" style="color: var(--danger)">Overdue</h2>
-        <ul class="task-list">
+        <ul class="task-list" data-remove-done>
           {overdue.map((task) => (
-            <li data-task-id={task.id} data-priority={task.priority} class="task-row">
+            <li data-task-id={task.id} data-priority={task.priority} data-due-date={task.due_date} class="task-row">
               <div class="task-main">
                 <input
                   type="checkbox"
@@ -32,6 +37,12 @@ const { overdue, today: dueToday } = splitOverdueAndToday(tasks, today);
                 />
                 <span class="task-title">{task.title}</span>
                 <span class="pill pill--overdue">{formatDate(task.due_date!)}</span>
+                <button class="task-delete icon-btn" data-task-id={task.id} title={`Delete "${task.title}"`}>
+                  <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+                    <path d="M4 4l8 8M12 4l-8 8" />
+                  </svg>
+                  <span class="sr-only">Delete task</span>
+                </button>
               </div>
             </li>
           ))}
@@ -44,9 +55,9 @@ const { overdue, today: dueToday } = splitOverdueAndToday(tasks, today);
       {dueToday.length === 0 ? (
         <p class="empty">Nothing due today.</p>
       ) : (
-        <ul class="task-list">
+        <ul class="task-list" data-remove-done>
           {dueToday.map((task) => (
-            <li data-task-id={task.id} data-priority={task.priority} class="task-row">
+            <li data-task-id={task.id} data-priority={task.priority} data-due-date={task.due_date} class="task-row">
               <div class="task-main">
                 <input
                   type="checkbox"
@@ -55,12 +66,40 @@ const { overdue, today: dueToday } = splitOverdueAndToday(tasks, today);
                   aria-label={`Mark "${task.title}" done`}
                 />
                 <span class="task-title">{task.title}</span>
+                <button class="task-delete icon-btn" data-task-id={task.id} title={`Delete "${task.title}"`}>
+                  <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+                    <path d="M4 4l8 8M12 4l-8 8" />
+                  </svg>
+                  <span class="sr-only">Delete task</span>
+                </button>
               </div>
             </li>
           ))}
         </ul>
       )}
+
+      {inbox && (
+        <form method="POST" action={actions.createTask} class="composer mt-2">
+          <input type="hidden" name="projectId" value={inbox.id} />
+          <input type="hidden" name="dueDate" value={today} />
+          <input name="title" placeholder="Add task, due today" aria-label="Task title" required />
+          <select name="priority" aria-label="Priority">
+            <option value="4" selected>P4</option>
+            <option value="3">P3</option>
+            <option value="2">P2</option>
+            <option value="1">P1</option>
+          </select>
+          <button type="submit" class="btn btn--submit" title="Add task">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+              <path d="M8 3.5v9M3.5 8h9" />
+            </svg>
+            <span class="sr-only">Add task</span>
+          </button>
+        </form>
+      )}
     </section>
   </div>
 </AppLayout>
 <script src="../../scripts/task-toggle.ts"></script>
+<script src="../../scripts/task-delete.ts"></script>
+<script src="../../scripts/task-edit.ts"></script>

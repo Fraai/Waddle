@@ -1,5 +1,6 @@
 import Sortable from 'sortablejs';
 import { actions } from 'astro:actions';
+import { startInlineRename } from './inline-rename';
 
 const list = document.getElementById('project-list');
 if (list) {
@@ -40,5 +41,32 @@ document.querySelectorAll<HTMLButtonElement>('.project-delete').forEach((button)
       return;
     }
     row?.remove();
+  });
+});
+
+document.querySelectorAll<HTMLButtonElement>('.project-rename').forEach((button) => {
+  button.addEventListener('click', () => {
+    const projectId = Number(button.dataset.projectId);
+    const li = button.closest<HTMLElement>('li');
+    const link = li?.querySelector<HTMLAnchorElement>('a.nav-item');
+    const nameEl = link?.querySelector<HTMLElement>('.truncate');
+    const deleteBtn = li?.querySelector<HTMLButtonElement>('.project-delete');
+    if (!li || !link || !nameEl) return;
+    const onThisProject = location.pathname === `/app/projects/${projectId}`;
+
+    startInlineRename({
+      container: li,
+      displayEl: link,
+      hideWhileEditing: [button, ...(deleteBtn ? [deleteBtn] : [])],
+      currentValue: nameEl.textContent ?? '',
+      save: (name) => actions.renameProject({ projectId, name }),
+      onSaved: (name) => {
+        nameEl.textContent = name;
+        if (onThisProject) {
+          const heading = document.querySelector<HTMLElement>('h1.page-title');
+          if (heading) heading.textContent = name;
+        }
+      },
+    });
   });
 });

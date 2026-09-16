@@ -263,6 +263,7 @@ body {
   font-size: 0.9125rem;
   line-height: 1.45;
   word-break: break-word;
+  cursor: pointer;
 }
 
 .task-title[data-done] {
@@ -609,5 +610,30 @@ h2:hover > .icon-btn,
     background: var(--surface);
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
+  }
+}
+
+/* ==========================================================================
+   Mobile — the off-canvas sidebar itself is Tailwind (fixed + peer-checked
+   translate, see AppLayout.astro); what's left is what Tailwind can't
+   express: hover-gated affordances need another way in on a device that
+   can't hover, and a narrow composer needs its fields to wrap.
+   ========================================================================== */
+
+@media (hover: none) {
+  /* .icon-btn only reveals on :hover today — unreachable on a touch screen,
+     which never fires a persistent hover, so keep delete/rename always on. */
+  .icon-btn {
+    opacity: 1;
+  }
+}
+
+@media (max-width: 480px) {
+  .composer {
+    flex-wrap: wrap;
+  }
+
+  .composer input[name='title'] {
+    flex-basis: 100%;
   }
 }

@@ -1,13 +1,5 @@
 import { actions } from 'astro:actions';
-
-/** Keeps the project header's "N open tasks" line honest without a reload. */
-function bumpOpenCount(delta: number): void {
-  const el = document.querySelector<HTMLElement>('[data-open-count]');
-  if (!el) return;
-  const next = Math.max(0, Number(el.dataset.openCount ?? 0) + delta);
-  el.dataset.openCount = String(next);
-  el.textContent = next === 0 ? 'All clear' : `${next} open ${next === 1 ? 'task' : 'tasks'}`;
-}
+import { bumpOpenCount } from './open-count';
 
 function paint(checkbox: HTMLInputElement): void {
   const title = checkbox.nextElementSibling;
@@ -22,16 +14,28 @@ export function attachTaskToggles(): void {
       const taskId = Number(checkbox.dataset.taskId);
       // Top-level tasks are the ones the header counts; subtasks aren't.
       const countable = checkbox.closest('.task-main') !== null;
+      const row = checkbox.closest<HTMLElement>('li');
+      // Today/Upcoming only ever query *open* tasks — once one is done it no
+      // longer belongs in that list at all, so hide the row instead of just
+      // striking it through (which project pages do, since they show done
+      // tasks too).
+      const removeOnDone = row?.closest('[data-remove-done]') != null;
 
-      // Optimistic: the native checkbox already flipped, so reflect the rest
-      // immediately and let the write land in the background.
-      paint(checkbox);
+      if (removeOnDone && checkbox.checked) {
+        if (row) row.hidden = true;
+      } else {
+        paint(checkbox);
+      }
       if (countable) bumpOpenCount(checkbox.checked ? -1 : 1);
 
       const { error } = await actions.toggleTaskDone({ taskId });
       if (error) {
         checkbox.checked = !checkbox.checked;
-        paint(checkbox);
+        if (removeOnDone) {
+          if (row) row.hidden = false;
+        } else {
+          paint(checkbox);
+        }
         if (countable) bumpOpenCount(checkbox.checked ? -1 : 1);
         alert(error.message);
       }

@@ -6,8 +6,16 @@ export const idParam = z.coerce.number().int().positive();
 // of the field — preprocess maps "" to undefined, and .optional() has to be
 // on the wrapped schema itself (not just chained outside the preprocess) or
 // z.string() rejects that undefined with invalid_type.
+//
+// Also maps null: Astro's accept:'form' parser decides whether a missing
+// field becomes `undefined` or `null` by checking `instanceof ZodOptional`
+// on the schema as written in the object shape — but z.preprocess() wraps
+// this schema in a ZodPipe, so that check misses it and every blank/missing
+// due-date field arrives here as `null`, not `undefined` or "". Without this,
+// z.string().optional() rejects null with "invalid_type", and creating a
+// task with no due date fails outright (confirmed: this shipped broken).
 export const dateString = z.preprocess(
-  (v) => (v === '' ? undefined : v),
+  (v) => (v === '' || v == null ? undefined : v),
   z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/, 'Must be a valid date (YYYY-MM-DD)').optional(),
 );
 

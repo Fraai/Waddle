@@ -25,6 +25,17 @@ describe('createTaskSchema', () => {
     expect(result.data?.dueDate).toBeUndefined();
   });
 
+  // Astro's accept:'form' parser sends `null`, not `''`, for a blank/missing
+  // field whenever the schema isn't a plain ZodOptional at the top level —
+  // which a z.preprocess()-wrapped schema like dateString never is. This is
+  // what a real <input type="date"> left blank actually produces in
+  // production; the '' case above never occurs there.
+  it('accepts a null dueDate (what Astro\'s form parser sends for a blank field)', () => {
+    const result = createTaskSchema.safeParse({ projectId: '1', title: 'Task', dueDate: null });
+    expect(result.success).toBe(true);
+    expect(result.data?.dueDate).toBeUndefined();
+  });
+
   it('accepts a valid dueDate', () => {
     const result = createTaskSchema.safeParse({ projectId: '1', title: 'Task', dueDate: '2026-01-01' });
     expect(result.success).toBe(true);

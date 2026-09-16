@@ -30,8 +30,26 @@ const projectHue = (id: number) => (id * 137.5) % 360;
     <meta name="robots" content="noindex, nofollow" />
     <title>{title} · Todo</title>
   </head>
-  <body class="flex min-h-screen">
-    <aside class="sidebar sticky top-0 flex h-screen w-64 shrink-0 flex-col gap-1 p-3">
+  <body class="flex min-h-screen flex-col md:flex-row">
+    <input type="checkbox" id="nav-toggle" class="peer sr-only md:hidden" aria-label="Toggle menu" />
+
+    <header class="mobile-topbar sticky top-0 z-10 flex items-center gap-3 border-b border-[var(--hairline)] bg-[var(--chrome)] px-4 py-3 backdrop-blur-xl backdrop-saturate-150 md:hidden">
+      <label for="nav-toggle" class="hamburger grid h-8 w-8 shrink-0 cursor-pointer place-items-center rounded-[var(--r-sm)] active:bg-[var(--pressed)]">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+          <path d="M2 4h12M2 8h12M2 12h12" />
+        </svg>
+        <span class="sr-only">Open menu</span>
+      </label>
+      <span class="truncate text-[0.9375rem] font-semibold tracking-[-0.01em]">{title}</span>
+    </header>
+
+    <label
+      for="nav-toggle"
+      aria-hidden="true"
+      class="fixed inset-0 z-[15] bg-black/35 opacity-0 pointer-events-none transition-opacity duration-200 peer-checked:opacity-100 peer-checked:pointer-events-auto md:hidden"
+    ></label>
+
+    <aside class="sidebar fixed inset-y-0 left-0 z-20 flex w-[min(85vw,320px)] shrink-0 -translate-x-full flex-col gap-1 p-3 transition-transform duration-200 peer-checked:translate-x-0 md:sticky md:inset-y-auto md:left-auto md:top-0 md:z-auto md:h-screen md:w-64 md:translate-x-0">
       <div class="px-2 pb-4 pt-2">
         <div class="text-[0.9375rem] font-semibold tracking-[-0.01em]">Todo</div>
         <div class="text-xs" style="color: var(--text-3)">{user.email}</div>
@@ -81,6 +99,12 @@ const projectHue = (id: number) => (id * 137.5) % 360;
               <span class="project-dot" style={`--dot: hsl(${projectHue(project.id)} 62% 52%)`}></span>
               <span class="truncate">{project.name}</span>
             </a>
+            <button class="project-rename icon-btn" data-project-id={project.id} title={`Rename ${project.name}`}>
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M11.3 2.7a1.2 1.2 0 0 1 1.7 1.7L5.6 12l-2.4.7.7-2.4z" />
+              </svg>
+              <span class="sr-only">Rename project</span>
+            </button>
             <button class="project-delete icon-btn" data-project-id={project.id} title={`Delete ${project.name}`}>
               <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
                 <path d="M4 4l8 8M12 4l-8 8" />
@@ -101,7 +125,7 @@ const projectHue = (id: number) => (id * 137.5) % 360;
       </form>
     </aside>
 
-    <main class="min-w-0 flex-1 px-8 pb-12">
+    <main class="min-w-0 flex-1 px-4 pb-12 md:px-8">
       <slot />
     </main>
   </body>

@@ -1,37 +1,11 @@
 import Sortable from 'sortablejs';
 import { actions } from 'astro:actions';
-// Importing runs task-toggle's own setup — don't call attachTaskToggles()
-// again here or every checkbox gets two listeners.
+import { startInlineRename } from './inline-rename';
+// Importing runs task-toggle's/task-delete's own setup — don't re-attach
+// their listeners here or every checkbox/button gets two.
 import './task-toggle';
-
-function bumpOpenCount(delta: number): void {
-  const el = document.querySelector<HTMLElement>('[data-open-count]');
-  if (!el) return;
-  const next = Math.max(0, Number(el.dataset.openCount ?? 0) + delta);
-  el.dataset.openCount = String(next);
-  el.textContent = next === 0 ? 'All clear' : `${next} open ${next === 1 ? 'task' : 'tasks'}`;
-}
-
-document.querySelectorAll<HTMLButtonElement>('.task-delete').forEach((button) => {
-  button.addEventListener('click', async () => {
-    const taskId = Number(button.dataset.taskId);
-    const row = button.closest<HTMLElement>('li');
-    const wasOpen = !row?.querySelector<HTMLInputElement>('.task-toggle')?.checked;
-
-    // Optimistic: hide now, drop it for good once the delete lands.
-    if (row) row.hidden = true;
-    if (wasOpen) bumpOpenCount(-1);
-
-    const { error } = await actions.deleteTask({ taskId });
-    if (error) {
-      if (row) row.hidden = false;
-      if (wasOpen) bumpOpenCount(1);
-      alert(error.message);
-      return;
-    }
-    row?.remove();
-  });
-});
+import './task-delete';
+import './task-edit';
 
 // Deleting a section moves its tasks back to the unsectioned list, which is a
 // structural change — cheaper to re-render than to reshuffle the DOM by hand.
@@ -45,6 +19,28 @@ document.querySelectorAll<HTMLButtonElement>('.section-delete').forEach((button)
       return;
     }
     location.reload();
+  });
+});
+
+document.querySelectorAll<HTMLButtonElement>('.section-rename').forEach((button) => {
+  button.addEventListener('click', () => {
+    const sectionId = Number(button.dataset.sectionId);
+    const h2 = button.closest<HTMLElement>('h2');
+    const nameEl = h2?.querySelector<HTMLElement>('.section-name');
+    const deleteBtn = h2?.querySelector<HTMLButtonElement>('.section-delete');
+    if (!h2 || !nameEl) return;
+
+    startInlineRename({
+      container: h2,
+      displayEl: nameEl,
+      hideWhileEditing: [button, ...(deleteBtn ? [deleteBtn] : [])],
+      currentValue: nameEl.textContent ?? '',
+      save: (name) => actions.renameSection({ sectionId, name }),
+      onSaved: (name) => {
+        nameEl.textContent = name;
+        if (deleteBtn) deleteBtn.title = `Delete ${name}`;
+      },
+    });
   });
 });
 
