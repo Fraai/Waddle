@@ -24,7 +24,7 @@
   },
   "devDependencies": {
     "@cloudflare/vitest-pool-workers": "^0.17.0",
-    "@cloudflare/workers-types": "^4.20260701.1",
+    "@cloudflare/workers-types": "^5.20260915.1",
     "@tailwindcss/vite": "^4.0.0",
     "@types/sortablejs": "^1.15.0",
     "tailwindcss": "^4.0.0",
