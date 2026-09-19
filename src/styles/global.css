@@ -289,6 +289,39 @@ body {
   background: var(--dot, var(--text-3));
 }
 
+/* Colour picker popover — a grid of swatches, opened by clicking a
+   button.project-dot. Positioned in JS (getBoundingClientRect off the
+   trigger), not CSS anchor positioning, since Safari support for that is
+   too recent to rely on for every device this app runs on. */
+.color-picker {
+  position: fixed;
+  z-index: 30;
+  display: grid;
+  grid-template-columns: repeat(8, 1.25rem);
+  gap: var(--space-1);
+  padding: var(--space-2);
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-md);
+  box-shadow: var(--shadow-2);
+}
+
+.color-picker-swatch {
+  width: 1.25rem;
+  height: 1.25rem;
+  border: 0;
+  padding: 0;
+  border-radius: 999px;
+  background: var(--swatch);
+  cursor: pointer;
+  transition: transform var(--fast) var(--ease);
+}
+
+.color-picker-swatch:hover,
+.color-picker-swatch:focus-visible {
+  transform: scale(1.15);
+}
+
 /* Only the sidebar's dot is a clickable colour-cycle button — the ones in
    week.astro / the task composer are plain decorative spans. */
 button.project-dot {

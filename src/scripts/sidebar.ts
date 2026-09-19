@@ -18,7 +18,14 @@ const projectHue = (id: number) => (id * 137.5) % 360;
 // Same palette as validation.ts's PROJECT_COLORS — kept in sync by hand,
 // same as projectHue() above.
 const PROJECT_COLORS = [
-  '#ef4444', '#f97316', '#eab308', '#22c55e', '#14b8a6', '#3b82f6', '#8b5cf6', '#ec4899',
+  '#d74242', '#d75042', '#d75e42', '#d76c42', '#d77a42', '#d78842', '#d79642', '#d7a442',
+  '#d7b242', '#d7c042', '#d7ce42', '#d2d742', '#c4d742', '#b6d742', '#a8d742', '#9ad742',
+  '#8cd742', '#7ed742', '#70d742', '#62d742', '#54d742', '#46d742', '#42d74b', '#42d759',
+  '#42d767', '#42d775', '#42d783', '#42d791', '#42d79f', '#42d7ad', '#42d7bb', '#42d7c9',
+  '#42d7d7', '#42c9d7', '#42bbd7', '#42add7', '#429fd7', '#4291d7', '#4283d7', '#4275d7',
+  '#4267d7', '#4259d7', '#424bd7', '#4642d7', '#5442d7', '#6242d7', '#7042d7', '#7e42d7',
+  '#8c42d7', '#9a42d7', '#a842d7', '#b642d7', '#c442d7', '#d242d7', '#d742ce', '#d742c0',
+  '#d742b2', '#d742a4', '#d74296', '#d74288', '#d7427a', '#d7426c', '#d7425e', '#d74250',
 ] as const;
 
 // Desktop sidebar collapse — separate from the mobile drawer's checkbox,
@@ -122,27 +129,82 @@ function attachProjectTypeBadge(button: HTMLButtonElement): void {
 
 document.querySelectorAll<HTMLButtonElement>('.project-type-badge').forEach(attachProjectTypeBadge);
 
-// The sidebar dot cycles through a fixed palette on click — same
-// optimistic-apply-then-rollback pattern as the type badge above.
-function attachProjectColorDot(button: HTMLButtonElement): void {
-  button.addEventListener('click', async () => {
-    const projectId = Number(button.dataset.projectId);
-    const current = button.dataset.color ?? '';
-    const currentIndex = PROJECT_COLORS.indexOf(current as (typeof PROJECT_COLORS)[number]);
-    const next = PROJECT_COLORS[(currentIndex + 1) % PROJECT_COLORS.length];
+// The sidebar dot opens a swatch-grid popover — 64 colours is too many to
+// cycle through one click at a time.
+let colorPicker: HTMLDivElement | null = null;
+let colorPickerTarget: HTMLButtonElement | null = null;
 
-    const apply = (color: string) => {
+function onColorPickerKeydown(e: KeyboardEvent): void {
+  if (e.key === 'Escape') closeColorPicker();
+}
+
+function onColorPickerOutsideClick(e: MouseEvent): void {
+  if (colorPicker && !colorPicker.contains(e.target as Node) && e.target !== colorPickerTarget) {
+    closeColorPicker();
+  }
+}
+
+function closeColorPicker(): void {
+  colorPicker?.remove();
+  colorPicker = null;
+  colorPickerTarget = null;
+  document.removeEventListener('keydown', onColorPickerKeydown);
+  document.removeEventListener('click', onColorPickerOutsideClick, true);
+}
+
+function openColorPicker(button: HTMLButtonElement): void {
+  const reopening = colorPickerTarget === button;
+  closeColorPicker();
+  if (reopening) return;
+
+  const projectId = Number(button.dataset.projectId);
+  const picker = document.createElement('div');
+  picker.className = 'color-picker';
+  picker.setAttribute('role', 'menu');
+  picker.setAttribute('aria-label', 'Project colour');
+
+  for (const color of PROJECT_COLORS) {
+    const swatch = document.createElement('button');
+    swatch.type = 'button';
+    swatch.className = 'color-picker-swatch';
+    swatch.style.setProperty('--swatch', color);
+    swatch.setAttribute('aria-label', `Set colour ${color}`);
+    swatch.addEventListener('click', async () => {
+      const current = button.dataset.color ?? '';
       button.dataset.color = color;
       button.style.setProperty('--dot', color);
-    };
+      closeColorPicker();
+      const { error } = await actions.setProjectColor({ projectId, color });
+      if (error) {
+        button.dataset.color = current;
+        button.style.setProperty('--dot', current || `hsl(${projectHue(projectId)} 62% 52%)`);
+        alert(error.message);
+      }
+    });
+    picker.append(swatch);
+  }
 
-    apply(next);
-    const { error } = await actions.setProjectColor({ projectId, color: next });
-    if (error) {
-      apply(current);
-      alert(error.message);
-    }
-  });
+  document.body.append(picker);
+  colorPicker = picker;
+  colorPickerTarget = button;
+
+  // Anchor under the dot, then nudge back on-screen if it would overflow.
+  const rect = button.getBoundingClientRect();
+  const pickerRect = picker.getBoundingClientRect();
+  let top = rect.bottom + 6;
+  let left = rect.left;
+  if (left + pickerRect.width > window.innerWidth) left = window.innerWidth - pickerRect.width - 8;
+  if (top + pickerRect.height > window.innerHeight) top = rect.top - pickerRect.height - 6;
+  picker.style.top = `${Math.max(8, top)}px`;
+  picker.style.left = `${Math.max(8, left)}px`;
+
+  document.addEventListener('keydown', onColorPickerKeydown);
+  // Deferred so the click that opened the picker doesn't also close it.
+  setTimeout(() => document.addEventListener('click', onColorPickerOutsideClick, true), 0);
+}
+
+function attachProjectColorDot(button: HTMLButtonElement): void {
+  button.addEventListener('click', () => openColorPicker(button));
 }
 
 document.querySelectorAll<HTMLButtonElement>('button.project-dot').forEach(attachProjectColorDot);

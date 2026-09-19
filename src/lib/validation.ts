@@ -35,9 +35,18 @@ export const setProjectTypeSchema = z.object({ projectId: idParam, type: project
 
 // Fixed palette rather than a free-form colour picker — keeps the input
 // small enough to validate with an enum (a raw string would flow into a
-// style attribute) and matches sidebar.ts's click-to-cycle UI.
+// style attribute). 64 evenly-spaced hues (same HSL spacing idea as
+// projectHue()'s fallback, just fixed into a pickable set) shown as a grid
+// popover in sidebar.ts, not a click-to-cycle (64 clicks would be unusable).
 export const PROJECT_COLORS = [
-  '#ef4444', '#f97316', '#eab308', '#22c55e', '#14b8a6', '#3b82f6', '#8b5cf6', '#ec4899',
+  '#d74242', '#d75042', '#d75e42', '#d76c42', '#d77a42', '#d78842', '#d79642', '#d7a442',
+  '#d7b242', '#d7c042', '#d7ce42', '#d2d742', '#c4d742', '#b6d742', '#a8d742', '#9ad742',
+  '#8cd742', '#7ed742', '#70d742', '#62d742', '#54d742', '#46d742', '#42d74b', '#42d759',
+  '#42d767', '#42d775', '#42d783', '#42d791', '#42d79f', '#42d7ad', '#42d7bb', '#42d7c9',
+  '#42d7d7', '#42c9d7', '#42bbd7', '#42add7', '#429fd7', '#4291d7', '#4283d7', '#4275d7',
+  '#4267d7', '#4259d7', '#424bd7', '#4642d7', '#5442d7', '#6242d7', '#7042d7', '#7e42d7',
+  '#8c42d7', '#9a42d7', '#a842d7', '#b642d7', '#c442d7', '#d242d7', '#d742ce', '#d742c0',
+  '#d742b2', '#d742a4', '#d74296', '#d74288', '#d7427a', '#d7426c', '#d7425e', '#d74250',
 ] as const;
 export const setProjectColorSchema = z.object({ projectId: idParam, color: z.enum(PROJECT_COLORS) });
 
