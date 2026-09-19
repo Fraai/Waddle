@@ -30,6 +30,13 @@ const projectHue = (id: number) => (id * 137.5) % 360;
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="robots" content="noindex, nofollow" />
     <title>{title} · Todo</title>
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <meta name="theme-color" content="#0071e3" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Todo" />
     <script is:inline nonce={Astro.locals.cspNonce}>
       // Runs before the sidebar paints, so a collapsed preference from a
       // previous visit never flashes open first. Desktop-only concern — the
