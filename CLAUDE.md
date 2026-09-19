@@ -24,7 +24,7 @@ Local: put these in `.dev.vars` (gitignored, see `.env.example` for the variable
 
 ## MCP server
 
-`/api/mcp` (`src/pages/api/mcp.ts`) exposes the app to any MCP client (Claude Code, Claude Desktop, Claude.ai custom connectors) as tools: `list_projects`, `list_today`, `list_upcoming`, `list_project_tasks`, `create_task`, `toggle_task_done`, `delete_task`. Built on `@modelcontextprotocol/sdk`'s `WebStandardStreamableHTTPServerTransport` in stateless mode (fresh `McpServer` per request — no session state, since every tool call re-authenticates and re-queries D1 anyway).
+`/api/mcp` (`src/pages/api/mcp.ts`) exposes the app to any MCP client (Claude Code, Claude Desktop, Claude.ai custom connectors) as tools: `list_projects`, `list_today`, `list_upcoming`, `list_project_tasks`, `create_project`, `create_task`, `toggle_task_done`, `delete_task`. Built on `@modelcontextprotocol/sdk`'s `WebStandardStreamableHTTPServerTransport` in stateless mode (fresh `McpServer` per request — no session state, since every tool call re-authenticates and re-queries D1 anyway).
 
 Auth is a single Bearer token (`MCP_TOKEN`) mapped to one account (`MCP_USER_EMAIL`) — this is personal automation, not multi-tenant, so the same token in two different Claude installs just authenticates as that one person both times. Not OAuth; if this ever needs to serve multiple people with their own logins, that's the upgrade path. `MCP_USER_EMAIL` must already exist (sign in via the browser once first) — the endpoint resolves an existing user (`getUserByEmail`), it never provisions one.
 

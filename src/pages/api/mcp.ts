@@ -124,6 +124,22 @@ function buildServer(user: User): McpServer {
   );
 
   server.registerTool(
+    'create_project',
+    {
+      title: 'Create a project',
+      description: 'Creates a new project. Defaults to type "work" if not given.',
+      inputSchema: {
+        name: z.string().min(1).describe('Project name'),
+        type: z.enum(['private', 'work']).optional().describe('Defaults to "work"'),
+      },
+    },
+    async ({ name, type }) => {
+      const project = await db.createProject(env.DB, user.id, name, type);
+      return toolResult(projectView(project));
+    },
+  );
+
+  server.registerTool(
     'create_task',
     {
       title: 'Create a task',
