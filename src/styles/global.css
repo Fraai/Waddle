@@ -18,8 +18,14 @@
   --text-2: #6e6e73;
   --text-3: #8e8e93;
 
-  --accent: #0071e3;
-  --accent-soft: rgba(0, 113, 227, 0.1);
+  /* --accent is the brand colour itself — for solid fills only (button
+     backgrounds, the app icon). Raw, it's ~2:1 against white, which fails
+     WCAG for text/icons/outlines — --accent-ink is the same hue, darkened
+     until it clears 4.5:1, for anything drawn ON a light surface instead of
+     used as one. */
+  --accent: #f6a80a;
+  --accent-ink: #946505;
+  --accent-soft: rgba(246, 168, 10, 0.14);
   --danger: #ff3b30;
 
   --p1: #ff3b30;
@@ -68,8 +74,11 @@
     --text-2: #a1a1a6;
     --text-3: #86868b;
 
-    --accent: #0a84ff;
-    --accent-soft: rgba(10, 132, 255, 0.16);
+    --accent: #f6a80a;
+    /* No darkening needed here — against the dark-mode background, the raw
+       brand colour already clears 9:1. */
+    --accent-ink: #f6a80a;
+    --accent-soft: rgba(246, 168, 10, 0.2);
 
     --p4: #5a5a5f;
 
@@ -112,7 +121,7 @@ body {
 }
 
 :focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--accent-ink);
   outline-offset: 2px;
   border-radius: 5px;
 }
@@ -255,7 +264,7 @@ body {
 
 .nav-item[aria-current="page"] {
   background: var(--accent-soft);
-  color: var(--accent);
+  color: var(--accent-ink);
   font-weight: 590;
 }
 
@@ -625,7 +634,7 @@ h2:hover > .icon-btn,
 
 .field:focus {
   outline: none;
-  border-color: var(--accent);
+  border-color: var(--accent-ink);
   box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
@@ -642,7 +651,7 @@ h2:hover > .icon-btn,
 }
 
 .composer:focus-within {
-  border-color: var(--accent);
+  border-color: var(--accent-ink);
   box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
@@ -696,7 +705,9 @@ h2:hover > .icon-btn,
 
 .btn--primary {
   background: var(--accent);
-  color: #fff;
+  /* White text on this background is ~2:1 — the brand amber is too light
+     for that. Dark text clears 8:1. */
+  color: #1d1d1f;
   box-shadow: var(--shadow-1);
 }
 
@@ -727,7 +738,7 @@ h2:hover > .icon-btn,
 }
 
 .composer:focus-within .btn--submit {
-  color: var(--accent);
+  color: var(--accent-ink);
   background: var(--accent-soft);
 }
 
@@ -746,7 +757,7 @@ h2:hover > .icon-btn,
 
 .task-href-badge:hover {
   background: var(--row-hover);
-  color: var(--accent);
+  color: var(--accent-ink);
 }
 
 .task-href-badge svg {
