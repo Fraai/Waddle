@@ -16,7 +16,7 @@ const projectsById = new Map(projects.map((p) => [p.id, p]));
 const today = todayISO();
 const groups = groupUpcoming(tasks, today);
 ---
-<AppLayout title="Upcoming">
+<AppLayout title="Upcoming" projects={projects}>
   <div class="mx-auto max-w-2xl">
     <header class="page-head">
       <h1 class="page-title">Upcoming</h1>

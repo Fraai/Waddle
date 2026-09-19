@@ -22,7 +22,7 @@ const today = todayISO();
 const weekDates = getWeekDates(today);
 const days = groupWeek(tasks, weekDates);
 ---
-<AppLayout title="Week">
+<AppLayout title="Week" projects={projects}>
   <header class="page-head">
     <h1 class="page-title">Week</h1>
     <p class="mt-1 text-sm" style="color: var(--text-2)">{formatWeekday(weekDates[0])} {formatDayMonth(weekDates[0])} – {formatWeekday(weekDates[6])} {formatDayMonth(weekDates[6])}</p>

@@ -16,7 +16,7 @@ const projectsById = new Map(projects.map((p) => [p.id, p]));
 const today = todayISO();
 const { overdue, today: dueToday } = splitOverdueAndToday(tasks, today);
 ---
-<AppLayout title="Today">
+<AppLayout title="Today" projects={projects}>
   <div class="mx-auto max-w-2xl">
     <header class="page-head">
       <h1 class="page-title">Today</h1>

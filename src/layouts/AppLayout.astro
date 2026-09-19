@@ -2,15 +2,19 @@
 import '../styles/global.css';
 import { actions } from 'astro:actions';
 import { env } from 'cloudflare:workers';
-import { listProjects } from '../lib/db';
+import { listProjects, type Project } from '../lib/db';
 import { withSlugs } from '../lib/slug';
 
 interface Props {
   title: string;
+  // Every /app/* page already fetches its own project list — passing it
+  // through here saves a second, identical listProjects query per request.
+  // Falls back to fetching it if a caller doesn't have it yet.
+  projects?: Project[];
 }
-const { title } = Astro.props;
+const { title, projects: projectsProp } = Astro.props;
 const user = Astro.locals.user!;
-const projects = withSlugs(await listProjects(env.DB, user.id));
+const projects = withSlugs(projectsProp ?? (await listProjects(env.DB, user.id)));
 // Every user gets an Inbox at provisioning, so this should always be found —
 // but a layout can't redirect (a returned Response renders nothing), so treat
 // it as "no Inbox link" rather than crashing every /app page.

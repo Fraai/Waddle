@@ -10,7 +10,8 @@ import { formatDate } from '../../../lib/format';
 const user = Astro.locals.user!;
 const slug = Astro.params.slug;
 
-const projects = withSlugs(await db.listProjects(env.DB, user.id));
+const rawProjects = await db.listProjects(env.DB, user.id);
+const projects = withSlugs(rawProjects);
 const project = projects.find((p) => p.slug === slug);
 if (!project) return Astro.redirect('/app/today');
 const projectId = project.id;
@@ -43,7 +44,7 @@ const sectionGroups = [
 const today = todayISO();
 const openCount = openTopLevel.length;
 ---
-<AppLayout title={project.name}>
+<AppLayout title={project.name} projects={rawProjects}>
   <div data-project-root={projectId} data-today={today} class="mx-auto max-w-2xl">
     <header class="page-head">
       <h1 class="page-title">{project.name}</h1>

@@ -1,0 +1,14 @@
+# Astro/Cloudflare auto-injects an immutable rule for the hashed /_astro/*
+# bundle on top of this file — these are the unhashed public/ files (same
+# filename forever, content can change on a future deploy, e.g. a rebrand),
+# so a short cache with revalidation instead of `immutable`.
+/favicon-32.png
+  Cache-Control: public, max-age=3600, must-revalidate
+/apple-touch-icon.png
+  Cache-Control: public, max-age=3600, must-revalidate
+/icon-192.png
+  Cache-Control: public, max-age=3600, must-revalidate
+/icon-512.png
+  Cache-Control: public, max-age=3600, must-revalidate
+/manifest.json
+  Cache-Control: public, max-age=3600, must-revalidate
