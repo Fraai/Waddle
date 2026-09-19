@@ -45,10 +45,11 @@ const openCount = topLevel.filter((t) => t.done_at === null).length;
       </p>
     </header>
 
+    <div id="sections-container">
     {sectionGroups.map((group) => (
-      <section class="mb-6">
+      <section class="mb-6" data-section-id={group.id ?? ''}>
         {group.name && (
-          <h2 class="label-caps mb-2 flex items-center gap-2">
+          <h2 class="label-caps mb-2 flex items-center gap-2 section-handle">
             <span class="section-name">{group.name}</span>
             <button class="section-rename icon-btn" data-section-id={group.id} title={`Rename ${group.name}`}>
               <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
@@ -134,6 +135,12 @@ const openCount = topLevel.filter((t) => t.done_at === null).length;
                             <span class="sr-only">Open link</span>
                           </a>
                         )}
+                        <button class="task-delete icon-btn" data-task-id={sub.id} title={`Delete "${sub.title}"`}>
+                          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+                            <path d="M4 4l8 8M12 4l-8 8" />
+                          </svg>
+                          <span class="sr-only">Delete task</span>
+                        </button>
                       </div>
                     </li>
                   ))}
@@ -179,6 +186,7 @@ const openCount = topLevel.filter((t) => t.done_at === null).length;
         </form>
       </section>
     ))}
+    </div>
 
     <form method="POST" action={actions.createSection} class="mt-6">
       <input type="hidden" name="projectId" value={projectId} />

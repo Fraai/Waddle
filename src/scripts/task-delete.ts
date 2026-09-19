@@ -7,7 +7,10 @@ export function attachTaskDelete(button: HTMLButtonElement): void {
   button.addEventListener('click', async () => {
     const taskId = Number(button.dataset.taskId);
     const row = button.closest<HTMLElement>('li');
-    const wasOpen = !row?.querySelector<HTMLInputElement>('.task-toggle')?.checked;
+    // Top-level tasks (class task-row) are the ones the header counts —
+    // subtasks (class subtask) aren't.
+    const countable = row?.classList.contains('task-row') ?? false;
+    const wasOpen = countable && !row?.querySelector<HTMLInputElement>('.task-toggle')?.checked;
 
     // Optimistic: hide now, drop it for good once the delete lands.
     if (row) row.hidden = true;

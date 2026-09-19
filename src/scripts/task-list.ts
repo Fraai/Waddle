@@ -83,6 +83,33 @@ function makeTaskListSortable(list: HTMLElement, pid: number): void {
 if (root && projectId !== null) {
   document.querySelectorAll<HTMLElement>('.task-list').forEach((list) => makeTaskListSortable(list, projectId));
 
+  // The unsectioned group (data-section-id="") always renders first and
+  // isn't a real section — filter keeps it from being picked up to drag,
+  // and onMove refuses any drop that would land ahead of it, so it can't
+  // be pushed out of first place by dragging something else there either.
+  const sectionsContainer = document.getElementById('sections-container');
+  if (sectionsContainer) {
+    new Sortable(sectionsContainer, {
+      handle: '.section-handle',
+      filter: '[data-section-id=""]',
+      animation: 150,
+      easing: 'cubic-bezier(0.22, 1, 0.36, 1)',
+      onMove: (event) => (event.related as HTMLElement).dataset.sectionId !== '',
+      onEnd: async () => {
+        const orderedIds = [...sectionsContainer.children]
+          .map((el) => (el as HTMLElement).dataset.sectionId)
+          .filter((id): id is string => !!id)
+          .map(Number);
+        // The DOM already shows the new order — only reload if the write fails.
+        const { error } = await actions.reorderSections({ projectId, orderedIds });
+        if (error) {
+          alert(error.message);
+          location.reload();
+        }
+      },
+    });
+  }
+
   const newSectionForm = document.getElementById('new-section')?.closest('form');
   newSectionForm?.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -101,9 +128,10 @@ if (root && projectId !== null) {
 
     const block = document.createElement('section');
     block.className = 'mb-6';
+    block.dataset.sectionId = String(section.id);
 
     const h2 = document.createElement('h2');
-    h2.className = 'label-caps mb-2 flex items-center gap-2';
+    h2.className = 'label-caps mb-2 flex items-center gap-2 section-handle';
     const nameEl = document.createElement('span');
     nameEl.className = 'section-name';
     nameEl.textContent = section.name;
@@ -161,7 +189,7 @@ if (root && projectId !== null) {
     form.append(projectIdInput, sectionIdInput, titleInput, dueInput, prioritySelect, submitBtn);
 
     block.append(h2, list, form);
-    newSectionForm.parentElement?.insertBefore(block, newSectionForm);
+    sectionsContainer?.append(block);
 
     attachSectionRename(renameBtn);
     attachSectionDelete(deleteBtn);

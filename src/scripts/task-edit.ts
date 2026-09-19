@@ -253,15 +253,11 @@ function openTaskModal(li: HTMLElement): void {
   m.prioritySelect.value = priority;
   m.saveBtn.disabled = false;
   m.deleteBtn.disabled = false;
-  // Subtasks have no delete button on the row (they can't be deleted from
-  // the UI at all today) — hide the modal's delete to match, rather than
-  // offering an action that has nothing to wire up to. A subtask also
-  // always belongs to its parent's project, so moving it independently
-  // would leave it inconsistent with the parent — hide the picker rather
-  // than letting that happen.
-  const isSubtask = !li.querySelector('.task-delete');
-  m.deleteBtn.hidden = isSubtask;
-  m.projectSelect.hidden = isSubtask;
+  m.deleteBtn.hidden = false;
+  // A subtask always belongs to its parent's project (enforced when it's
+  // created) — moving it independently here would leave it inconsistent
+  // with the parent, so hide the picker rather than letting that happen.
+  m.projectSelect.hidden = li.classList.contains('subtask');
 
   m.dialog.showModal();
   m.titleInput.focus();

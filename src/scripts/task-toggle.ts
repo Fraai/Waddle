@@ -14,9 +14,11 @@ function paint(checkbox: HTMLInputElement): void {
 export function attachTaskToggle(checkbox: HTMLInputElement): void {
   checkbox.addEventListener('change', async () => {
     const taskId = Number(checkbox.dataset.taskId);
-    // Top-level tasks are the ones the header counts; subtasks aren't.
-    const countable = checkbox.closest('.task-main') !== null;
     const row = checkbox.closest<HTMLElement>('li');
+    // Top-level tasks (class task-row) are the ones the header counts —
+    // subtasks (class subtask) aren't. Both wrap their checkbox in the same
+    // .task-main div, so that alone can't tell them apart.
+    const countable = row?.classList.contains('task-row') ?? false;
     // Today/Upcoming only ever query *open* tasks — once one is done it no
     // longer belongs in that list at all, so hide the row instead of just
     // striking it through (which project pages do, since they show done

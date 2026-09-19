@@ -111,7 +111,7 @@ function buildTaskRow(
   return li;
 }
 
-/** Builds a subtask row — no pill, no delete, matching server markup. */
+/** Builds a subtask row — no pill, matching server markup. */
 function buildSubtaskRow(task: CreatedTask): HTMLLIElement {
   const li = document.createElement('li');
   li.className = 'subtask';
@@ -132,10 +132,18 @@ function buildSubtaskRow(task: CreatedTask): HTMLLIElement {
   title.className = 'task-title';
   title.textContent = task.title;
 
-  main.append(checkbox, title);
+  const del = document.createElement('button');
+  del.type = 'button';
+  del.className = 'task-delete icon-btn';
+  del.dataset.taskId = String(task.id);
+  del.title = `Delete "${task.title}"`;
+  del.innerHTML = DELETE_ICON;
+
+  main.append(checkbox, title, del);
   li.append(main);
 
   attachTaskToggle(checkbox);
+  attachTaskDelete(del);
   attachTaskEdit(title);
   return li;
 }
