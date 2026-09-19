@@ -44,13 +44,13 @@ export async function renameProject(db: D1Database, userId: number, projectId: n
   if (meta.changes === 0) throw new NotFoundError('Project not found');
 }
 
-// Unlike rename/delete, the Inbox can change type — it's not exempt from
-// the private/work split just because it's un-renameable.
+// Like rename/delete, the Inbox is exempt — it's the catch-all, not a
+// private/work project, and the UI no longer offers a way to set it.
 export async function setProjectType(
   db: D1Database, userId: number, projectId: number, type: 'private' | 'work',
 ): Promise<void> {
   const { meta } = await db.prepare(
-    'UPDATE projects SET type = ? WHERE id = ? AND user_id = ?',
+    'UPDATE projects SET type = ? WHERE id = ? AND user_id = ? AND is_inbox = 0',
   ).bind(type, projectId, userId).run();
   if (meta.changes === 0) throw new NotFoundError('Project not found');
 }

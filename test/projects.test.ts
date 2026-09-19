@@ -75,13 +75,11 @@ describe('setProjectType', () => {
     expect(reloaded.type).toBe('private');
   });
 
-  it('unlike renameProject, allows changing the inbox\'s type', async () => {
+  it('like renameProject, exempts the inbox', async () => {
     await env.DB.prepare('INSERT INTO projects (user_id, name, is_inbox) VALUES (?, ?, 1)').bind(userId, 'Inbox').run();
     const inbox = await env.DB.prepare('SELECT id FROM projects WHERE user_id = ? AND is_inbox = 1')
       .bind(userId).first<{ id: number }>();
-    await db.setProjectType(env.DB, userId, inbox!.id, 'private');
-    const [reloaded] = await db.listProjects(env.DB, userId);
-    expect(reloaded.type).toBe('private');
+    await expect(db.setProjectType(env.DB, userId, inbox!.id, 'private')).rejects.toBeInstanceOf(db.NotFoundError);
   });
 
   it('throws NotFoundError for a project owned by someone else', async () => {

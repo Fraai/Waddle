@@ -15,6 +15,14 @@ const inbox = projects.find((p) => p.is_inbox === 1);
 const projectsById = new Map(projects.map((p) => [p.id, p]));
 const today = todayISO();
 const groups = groupUpcoming(tasks, today);
+
+// Inbox is the catch-all, not a private/work project — omitting the
+// attribute (rather than passing its type) keeps its tasks showing no
+// matter which the sidebar's filter is set to.
+const taskProjectType = (task: { project_id: number }) => {
+  const p = projectsById.get(task.project_id);
+  return p?.is_inbox ? undefined : p?.type;
+};
 ---
 <AppLayout title="Upcoming" projects={projects}>
   <div class="mx-auto max-w-2xl">
@@ -38,7 +46,7 @@ const groups = groupUpcoming(tasks, today);
               data-due-date={task.due_date}
               data-description={task.description ?? ''}
               data-href={task.href ?? ''}
-              data-project-type={projectsById.get(task.project_id)?.type}
+              data-project-type={taskProjectType(task)}
               data-project-id={task.project_id}
               class="task-row"
             >
@@ -72,7 +80,7 @@ const groups = groupUpcoming(tasks, today);
     ))}
 
     {inbox && (
-      <form method="POST" action={actions.createTask} class="composer mt-2" data-kind="upcoming" data-project-type={inbox.type}>
+      <form method="POST" action={actions.createTask} class="composer mt-2" data-kind="upcoming">
         <input type="hidden" name="projectId" value={inbox.id} />
         <input name="title" placeholder="Add task" aria-label="Task title" required />
         <input type="date" name="dueDate" aria-label="Due date" min={today} required />
