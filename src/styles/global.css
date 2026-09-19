@@ -577,18 +577,22 @@ h2:hover > .icon-btn,
 }
 
 .subtasks {
-  margin: var(--space-1) 0 0 var(--indent-subtask);
+  margin: var(--space-2) 0 0 var(--indent-subtask);
   padding-left: var(--space-3);
   border-left: 1.5px solid var(--hairline);
   display: flex;
   flex-direction: column;
-  gap: var(--space-1);
+  gap: var(--space-2);
 }
 
 .subtask {
   display: flex;
   align-items: flex-start;
   gap: var(--space-2);
+  /* A little vertical room of its own (not just the list's gap) — tight
+     enough before that a focus outline on one row had almost no clearance
+     from the next. */
+  padding: var(--space-0-5) 0;
   font-size: 0.85rem;
   transition: opacity var(--fast) var(--ease), transform var(--fast) var(--ease);
 }
