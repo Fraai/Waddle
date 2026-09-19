@@ -3,16 +3,17 @@ import AppLayout from '../../../layouts/AppLayout.astro';
 import { actions } from 'astro:actions';
 import { env } from 'cloudflare:workers';
 import * as db from '../../../lib/db';
+import { withSlugs } from '../../../lib/slug';
 import { todayISO } from '../../../lib/dates';
 import { formatDate } from '../../../lib/format';
 
 const user = Astro.locals.user!;
-const projectId = Number(Astro.params.id);
-if (!Number.isInteger(projectId)) return Astro.redirect('/app/today');
+const slug = Astro.params.slug;
 
-const projects = await db.listProjects(env.DB, user.id);
-const project = projects.find((p) => p.id === projectId);
+const projects = withSlugs(await db.listProjects(env.DB, user.id));
+const project = projects.find((p) => p.slug === slug);
 if (!project) return Astro.redirect('/app/today');
+const projectId = project.id;
 
 const [sections, tasks] = await Promise.all([
   db.listSections(env.DB, user.id, projectId),
@@ -20,6 +21,12 @@ const [sections, tasks] = await Promise.all([
 ]);
 
 const topLevel = tasks.filter((t) => t.parent_task_id === null);
+const openTopLevel = topLevel.filter((t) => t.done_at === null);
+// Sorted newest-first — recently finished tasks are the ones you're most
+// likely to want to glance at (or undo).
+const doneTopLevel = topLevel
+  .filter((t) => t.done_at !== null)
+  .sort((a, b) => (b.done_at! < a.done_at! ? -1 : 1));
 const subtasksByParent = new Map<number, typeof tasks>();
 for (const t of tasks) {
   if (t.parent_task_id === null) continue;
@@ -29,12 +36,12 @@ for (const t of tasks) {
 }
 
 const sectionGroups = [
-  { id: null as number | null, name: null as string | null, tasks: topLevel.filter((t) => t.section_id === null) },
-  ...sections.map((s) => ({ id: s.id, name: s.name, tasks: topLevel.filter((t) => t.section_id === s.id) })),
+  { id: null as number | null, name: null as string | null, tasks: openTopLevel.filter((t) => t.section_id === null) },
+  ...sections.map((s) => ({ id: s.id, name: s.name, tasks: openTopLevel.filter((t) => t.section_id === s.id) })),
 ];
 
 const today = todayISO();
-const openCount = topLevel.filter((t) => t.done_at === null).length;
+const openCount = openTopLevel.length;
 ---
 <AppLayout title={project.name}>
   <div data-project-root={projectId} data-today={today} class="mx-auto max-w-2xl">
@@ -66,7 +73,7 @@ const openCount = topLevel.filter((t) => t.done_at === null).length;
           </h2>
         )}
 
-        <ul class="task-list" data-section-id={group.id ?? ''}>
+        <ul class="task-list" data-section-id={group.id ?? ''} data-remove-done>
           {group.tasks.map((task) => (
             <li
               data-task-id={task.id}
@@ -193,6 +200,50 @@ const openCount = topLevel.filter((t) => t.done_at === null).length;
       <label class="sr-only" for="new-section">New section</label>
       <input id="new-section" name="name" placeholder="Add section" class="field w-56" required />
     </form>
+
+    {doneTopLevel.length > 0 && (
+      <details class="mt-8">
+        <summary class="label-caps cursor-pointer select-none">Completed ({doneTopLevel.length})</summary>
+        <ul class="task-list mt-2">
+          {doneTopLevel.map((task) => (
+            <li
+              data-task-id={task.id}
+              data-priority={task.priority}
+              data-due-date={task.due_date ?? ''}
+              data-description={task.description ?? ''}
+              data-href={task.href ?? ''}
+              data-project-id={projectId}
+              class="task-row"
+            >
+              <div class="task-main">
+                <input
+                  type="checkbox"
+                  class="task-toggle check"
+                  data-task-id={task.id}
+                  checked
+                  aria-label={`Mark "${task.title}" done`}
+                />
+                <span class="task-title" data-done>{task.title}</span>
+                {task.href && (
+                  <a class="task-href-badge" href={task.href} target="_blank" rel="noopener" title={task.href}>
+                    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M6.5 9.5 13 3M9 3h4v4M12 9v3a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h3" />
+                    </svg>
+                    <span class="sr-only">Open link</span>
+                  </a>
+                )}
+                <button class="task-delete icon-btn" data-task-id={task.id} title={`Delete "${task.title}"`}>
+                  <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+                    <path d="M4 4l8 8M12 4l-8 8" />
+                  </svg>
+                  <span class="sr-only">Delete task</span>
+                </button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </details>
+    )}
   </div>
 </AppLayout>
 <script src="../../../scripts/task-list.ts"></script>

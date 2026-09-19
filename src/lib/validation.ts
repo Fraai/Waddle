@@ -33,6 +33,14 @@ export const deleteProjectSchema = z.object({ projectId: idParam });
 export const reorderProjectsSchema = z.object({ orderedIds: z.array(idParam).min(1) });
 export const setProjectTypeSchema = z.object({ projectId: idParam, type: projectType });
 
+// Fixed palette rather than a free-form colour picker — keeps the input
+// small enough to validate with an enum (a raw string would flow into a
+// style attribute) and matches sidebar.ts's click-to-cycle UI.
+export const PROJECT_COLORS = [
+  '#ef4444', '#f97316', '#eab308', '#22c55e', '#14b8a6', '#3b82f6', '#8b5cf6', '#ec4899',
+] as const;
+export const setProjectColorSchema = z.object({ projectId: idParam, color: z.enum(PROJECT_COLORS) });
+
 export const createSectionSchema = z.object({
   projectId: idParam,
   name: requiredText('Name is required'),

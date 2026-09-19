@@ -1,11 +1,22 @@
 import { defineAction, ActionError } from 'astro:actions';
 import { env } from 'cloudflare:workers';
 import * as db from '../lib/db';
+import { withSlugs } from '../lib/slug';
 import {
   createProjectSchema, renameProjectSchema, deleteProjectSchema, reorderProjectsSchema, setProjectTypeSchema,
+  setProjectColorSchema,
   createSectionSchema, renameSectionSchema, deleteSectionSchema, reorderSectionsSchema,
   createTaskSchema, updateTaskSchema, toggleTaskDoneSchema, deleteTaskSchema, reorderTasksSchema,
 } from '../lib/validation';
+
+// Slugs aren't stored (see lib/slug.ts) — recomputed from the full project
+// list so a rename immediately gets its new, correctly-disambiguated slug.
+async function projectWithSlug(userId: number, projectId: number) {
+  const projects = await db.listProjects(env.DB, userId);
+  const withSlug = withSlugs(projects).find((p) => p.id === projectId);
+  if (!withSlug) throw new ActionError({ code: 'NOT_FOUND', message: 'Project not found' });
+  return withSlug;
+}
 
 function requireUser(context: { locals: App.Locals }) {
   if (!context.locals.user) throw new ActionError({ code: 'UNAUTHORIZED', message: 'Sign in required' });
@@ -29,7 +40,8 @@ export const server = {
     input: createProjectSchema,
     handler: async (input, context) => {
       const user = requireUser(context);
-      return db.createProject(env.DB, user.id, input.name, input.type);
+      const project = await db.createProject(env.DB, user.id, input.name, input.type);
+      return projectWithSlug(user.id, project.id);
     },
   }),
   setProjectType: defineAction({
@@ -40,12 +52,20 @@ export const server = {
       return { success: true };
     },
   }),
+  setProjectColor: defineAction({
+    input: setProjectColorSchema,
+    handler: async (input, context) => {
+      const user = requireUser(context);
+      await wrapNotFound(() => db.setProjectColor(env.DB, user.id, input.projectId, input.color));
+      return { success: true };
+    },
+  }),
   renameProject: defineAction({
     input: renameProjectSchema,
     handler: async (input, context) => {
       const user = requireUser(context);
       await wrapNotFound(() => db.renameProject(env.DB, user.id, input.projectId, input.name));
-      return { success: true };
+      return projectWithSlug(user.id, input.projectId);
     },
   }),
   deleteProject: defineAction({

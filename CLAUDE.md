@@ -9,6 +9,9 @@ Internal Todoist alternative for the fraai.agency team. Astro SSR on Cloudflare 
 - **Personal, per-user data** — every user has their own projects/sections/tasks. No sharing, no assignment, no cross-user visibility. Every user gets an auto-created, un-renameable, un-deletable "Inbox" project on first login.
 - **Responsive down to phone width** — sidebar collapses into a hamburger-triggered drawer below 768px (CSS-only, via a `peer`-checked checkbox in `AppLayout.astro`; no JS). At 768px+, the sidebar can also be manually collapsed (⌘B, or the toggle buttons) — a separate, JS/localStorage-backed preference (`sidebar.ts` + the `data-sidebar-collapsed` attribute set on `<html>`), independent of the mobile drawer. English UI, due dates only (no time-of-day), no recurring tasks, no labels.
 - **Every project is "private" or "work"** (`projects.type`, defaults to `work`) — toggled via the badge next to a project's name in the sidebar, including the Inbox. A sidebar segmented control (All/Work/Private) filters everything by it: Today, Upcoming, and Week hide non-matching tasks, and the sidebar hides non-matching projects. Also a JS/localStorage preference (`data-task-filter` on `<html>`), same mechanism as the sidebar collapse. Project pages are *not* filtered — visiting one directly always shows its own tasks regardless of the ambient filter.
+- **Project URLs are slugs** (`/app/projects/fitness`, not `/app/projects/7`) — derived from the name on every request by `lib/slug.ts`, not stored. A rename changes the URL immediately; an old link 404s into the same "not found" → redirect-to-Today fallback the project page already had for a bad id, rather than erroring. Same-named projects get a `-2`/`-3` suffix, assigned by id (creation order) so a drag-reorder can't shift which project owns a bare slug.
+- **Project colours** — a fixed 8-swatch palette (`PROJECT_COLORS` in `lib/validation.ts`, kept in sync by hand with the copy in `scripts/sidebar.ts`, same as the existing `projectHue()` duplication). Click the sidebar dot to cycle through it; unset projects keep the old hue-based default colour.
+- **Finished tasks leave the project view** — a project page only lists open tasks by default; done top-level (not sub-) tasks move into a "Completed" `<details>` disclosure at the bottom on next load. Subtasks still just strike through in place, like before.
 
 ## Required secrets
 
@@ -67,8 +70,9 @@ npm run deploy    # Build and deploy to Cloudflare
 - `src/lib/users.ts` — user + inbox-project auto-provisioning on login
 - `src/lib/db.ts` — all project/section/task queries, scoped to the acting user
 - `src/lib/dates.ts` — Today/Upcoming date-grouping (Europe/Brussels timezone)
+- `src/lib/slug.ts` — derives a project's URL slug from its name (not persisted — see "Project URLs" above)
 - `src/actions/index.ts` — all mutations (Astro Actions)
-- `src/pages/app/` — Today, Upcoming, Week, and per-project views
+- `src/pages/app/` — Today, Upcoming, Week, and per-project views (`projects/[slug].astro`)
 - `src/pages/api/mcp.ts` — MCP server (see "MCP server" above)
 - `migrations/` — D1 schema (`0001_init.sql` base schema, `0002_unique_inbox_per_user.sql` adds the one-inbox-per-user constraint, `0003_add_task_description_href.sql` adds `tasks.description`/`tasks.href` edited via the task detail modal, `0004_add_project_type.sql` adds `projects.type` — see `src/scripts/task-edit.ts` and `src/scripts/sidebar.ts`)
 

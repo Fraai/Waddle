@@ -55,6 +55,15 @@ export async function setProjectType(
   if (meta.changes === 0) throw new NotFoundError('Project not found');
 }
 
+export async function setProjectColor(
+  db: D1Database, userId: number, projectId: number, color: string,
+): Promise<void> {
+  const { meta } = await db.prepare(
+    'UPDATE projects SET color = ? WHERE id = ? AND user_id = ?',
+  ).bind(color, projectId, userId).run();
+  if (meta.changes === 0) throw new NotFoundError('Project not found');
+}
+
 export async function deleteProject(db: D1Database, userId: number, projectId: number): Promise<void> {
   // Every statement is scoped by a subquery that re-checks ownership AND
   // is_inbox = 0 — not just by project_id — so a projectId belonging to

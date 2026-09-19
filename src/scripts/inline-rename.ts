@@ -11,8 +11,8 @@ export function startInlineRename(opts: {
   displayEl: HTMLElement;
   currentValue: string;
   hideWhileEditing?: HTMLElement[];
-  save: (value: string) => Promise<{ error?: { message: string } | null }>;
-  onSaved: (value: string) => void;
+  save: (value: string) => Promise<{ error?: { message: string } | null; data?: unknown }>;
+  onSaved: (value: string, data?: unknown) => void;
 }): void {
   const { container, displayEl, currentValue, hideWhileEditing = [], save, onSaved } = opts;
   if (container.querySelector(':scope > .inline-rename-form')) return;
@@ -64,13 +64,13 @@ export function startInlineRename(opts: {
       return;
     }
     saveBtn.disabled = true;
-    const { error } = await save(value);
+    const { error, data } = await save(value);
     if (error) {
       alert(error.message);
       saveBtn.disabled = false;
       return;
     }
-    onSaved(value);
+    onSaved(value, data);
     restore();
   });
 }

@@ -15,6 +15,12 @@ const BRIEFCASE_ICON =
 // hue steps give every project a distinct, stable colour without storing one.
 const projectHue = (id: number) => (id * 137.5) % 360;
 
+// Same palette as validation.ts's PROJECT_COLORS — kept in sync by hand,
+// same as projectHue() above.
+const PROJECT_COLORS = [
+  '#ef4444', '#f97316', '#eab308', '#22c55e', '#14b8a6', '#3b82f6', '#8b5cf6', '#ec4899',
+] as const;
+
 // Desktop sidebar collapse — separate from the mobile drawer's checkbox,
 // which stays CSS-only. The inline <script> in AppLayout.astro's <head>
 // already applied a stored preference before paint; this just handles
@@ -116,6 +122,31 @@ function attachProjectTypeBadge(button: HTMLButtonElement): void {
 
 document.querySelectorAll<HTMLButtonElement>('.project-type-badge').forEach(attachProjectTypeBadge);
 
+// The sidebar dot cycles through a fixed palette on click — same
+// optimistic-apply-then-rollback pattern as the type badge above.
+function attachProjectColorDot(button: HTMLButtonElement): void {
+  button.addEventListener('click', async () => {
+    const projectId = Number(button.dataset.projectId);
+    const current = button.dataset.color ?? '';
+    const currentIndex = PROJECT_COLORS.indexOf(current as (typeof PROJECT_COLORS)[number]);
+    const next = PROJECT_COLORS[(currentIndex + 1) % PROJECT_COLORS.length];
+
+    const apply = (color: string) => {
+      button.dataset.color = color;
+      button.style.setProperty('--dot', color);
+    };
+
+    apply(next);
+    const { error } = await actions.setProjectColor({ projectId, color: next });
+    if (error) {
+      apply(current);
+      alert(error.message);
+    }
+  });
+}
+
+document.querySelectorAll<HTMLButtonElement>('button.project-dot').forEach(attachProjectColorDot);
+
 const list = document.getElementById('project-list');
 if (list) {
   new Sortable(list, {
@@ -140,7 +171,8 @@ function attachProjectDelete(button: HTMLButtonElement): void {
     if (!confirm('Delete this project and all its tasks?')) return;
     const projectId = Number(button.dataset.projectId);
     const row = button.closest<HTMLElement>('li');
-    const onThisProject = location.pathname === `/app/projects/${projectId}`;
+    const link = row?.querySelector<HTMLAnchorElement>('a.nav-item');
+    const onThisProject = link != null && location.pathname === link.getAttribute('href');
 
     if (row) row.hidden = true;
 
@@ -168,7 +200,7 @@ function attachProjectRename(button: HTMLButtonElement): void {
     const nameEl = link?.querySelector<HTMLElement>('.truncate');
     const deleteBtn = li?.querySelector<HTMLButtonElement>('.project-delete');
     if (!li || !link || !nameEl) return;
-    const onThisProject = location.pathname === `/app/projects/${projectId}`;
+    const onThisProject = location.pathname === link.getAttribute('href');
 
     startInlineRename({
       container: li,
@@ -176,8 +208,17 @@ function attachProjectRename(button: HTMLButtonElement): void {
       hideWhileEditing: [button, ...(deleteBtn ? [deleteBtn] : [])],
       currentValue: nameEl.textContent ?? '',
       save: (name) => actions.renameProject({ projectId, name }),
-      onSaved: (name) => {
+      onSaved: (name, data) => {
         nameEl.textContent = name;
+        // The name changed, so the derived slug (and therefore the URL) did
+        // too — update the link, and if we're on that project's page right
+        // now, swap the address bar so a refresh doesn't 404 into a redirect.
+        const slug = (data as { slug?: string } | undefined)?.slug;
+        if (slug) {
+          const href = `/app/projects/${slug}`;
+          link.setAttribute('href', href);
+          if (onThisProject) history.replaceState(null, '', href);
+        }
         if (onThisProject) {
           const heading = document.querySelector<HTMLElement>('h1.page-title');
           if (heading) heading.textContent = name;
@@ -211,20 +252,25 @@ newProjectForm?.addEventListener('submit', async (e) => {
   li.dataset.projectType = project.type;
   li.className = 'flex items-center gap-1';
 
+  const dot = document.createElement('button');
+  dot.type = 'button';
+  dot.className = 'project-dot';
+  dot.dataset.projectId = String(project.id);
+  dot.dataset.color = project.color ?? '';
+  dot.style.setProperty('--dot', project.color ?? `hsl(${projectHue(project.id)} 62% 52%)`);
+  dot.title = 'Change colour';
+  dot.innerHTML = '<span class="sr-only">Change colour</span>';
+
   const link = document.createElement('a');
-  link.href = `/app/projects/${project.id}`;
+  link.href = `/app/projects/${project.slug}`;
   link.className = 'nav-item flex-1 min-w-0';
   link.dataset.astroPrefetch = '';
-
-  const dot = document.createElement('span');
-  dot.className = 'project-dot';
-  dot.style.setProperty('--dot', `hsl(${projectHue(project.id)} 62% 52%)`);
 
   const name = document.createElement('span');
   name.className = 'truncate min-w-0';
   name.textContent = project.name;
 
-  link.append(dot, name);
+  link.append(name);
 
   const typeBadge = document.createElement('button');
   typeBadge.type = 'button';
@@ -246,8 +292,9 @@ newProjectForm?.addEventListener('submit', async (e) => {
   deleteBtn.title = `Delete ${project.name}`;
   deleteBtn.innerHTML = DELETE_ICON;
 
-  li.append(link, typeBadge, renameBtn, deleteBtn);
+  li.append(dot, link, typeBadge, renameBtn, deleteBtn);
   list.append(li);
+  attachProjectColorDot(dot);
   attachProjectTypeBadge(typeBadge);
   attachProjectRename(renameBtn);
   attachProjectDelete(deleteBtn);

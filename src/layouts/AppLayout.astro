@@ -3,13 +3,14 @@ import '../styles/global.css';
 import { actions } from 'astro:actions';
 import { env } from 'cloudflare:workers';
 import { listProjects } from '../lib/db';
+import { withSlugs } from '../lib/slug';
 
 interface Props {
   title: string;
 }
 const { title } = Astro.props;
 const user = Astro.locals.user!;
-const projects = await listProjects(env.DB, user.id);
+const projects = withSlugs(await listProjects(env.DB, user.id));
 // Every user gets an Inbox at provisioning, so this should always be found —
 // but a layout can't redirect (a returned Response renders nothing), so treat
 // it as "no Inbox link" rather than crashing every /app page.
@@ -129,10 +130,10 @@ const projectHue = (id: number) => (id * 137.5) % 360;
       {inbox && (
         <div data-project-id={inbox.id} data-project-type={inbox.type} class="flex items-center gap-1">
           <a
-            href={`/app/projects/${inbox.id}`}
+            href={`/app/projects/${inbox.slug}`}
             class="nav-item flex-1 min-w-0"
             data-astro-prefetch
-            aria-current={isActive(`/app/projects/${inbox.id}`) ? 'page' : undefined}
+            aria-current={isActive(`/app/projects/${inbox.slug}`) ? 'page' : undefined}
           >
             <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round">
               <path d="M2.2 9.2 4 3.4h8l1.8 5.8v3a1 1 0 0 1-1 1H3.2a1 1 0 0 1-1-1z" />
@@ -167,13 +168,22 @@ const projectHue = (id: number) => (id * 137.5) % 360;
       <ul id="project-list" class="flex flex-col gap-1">
         {otherProjects.map((project) => (
           <li data-project-id={project.id} data-project-type={project.type} class="flex items-center gap-1">
+            <button
+              type="button"
+              class="project-dot"
+              data-project-id={project.id}
+              data-color={project.color ?? ''}
+              style={`--dot: ${project.color ?? `hsl(${projectHue(project.id)} 62% 52%)`}`}
+              title="Change colour"
+            >
+              <span class="sr-only">Change colour</span>
+            </button>
             <a
-              href={`/app/projects/${project.id}`}
+              href={`/app/projects/${project.slug}`}
               class="nav-item flex-1 min-w-0"
               data-astro-prefetch
-              aria-current={isActive(`/app/projects/${project.id}`) ? 'page' : undefined}
+              aria-current={isActive(`/app/projects/${project.slug}`) ? 'page' : undefined}
             >
-              <span class="project-dot" style={`--dot: hsl(${projectHue(project.id)} 62% 52%)`}></span>
               <span class="truncate min-w-0">{project.name}</span>
             </a>
             <button

@@ -90,6 +90,20 @@ describe('setProjectType', () => {
   });
 });
 
+describe('setProjectColor', () => {
+  it('changes a project\'s colour', async () => {
+    const project = await db.createProject(env.DB, userId, 'Side project');
+    await db.setProjectColor(env.DB, userId, project.id, '#ef4444');
+    const [reloaded] = await db.listProjects(env.DB, userId);
+    expect(reloaded.color).toBe('#ef4444');
+  });
+
+  it('throws NotFoundError for a project owned by someone else', async () => {
+    const theirs = await db.createProject(env.DB, otherUserId, 'Theirs');
+    await expect(db.setProjectColor(env.DB, userId, theirs.id, '#ef4444')).rejects.toBeInstanceOf(db.NotFoundError);
+  });
+});
+
 describe('renameProject', () => {
   it('renames a project the user owns', async () => {
     const project = await db.createProject(env.DB, userId, 'Old name');

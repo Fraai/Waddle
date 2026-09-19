@@ -21,9 +21,11 @@ export function attachTaskToggle(checkbox: HTMLInputElement): void {
     const countable = row?.classList.contains('task-row') ?? false;
     // Today/Upcoming only ever query *open* tasks — once one is done it no
     // longer belongs in that list at all, so hide the row instead of just
-    // striking it through (which project pages do, since they show done
-    // tasks too).
-    const removeOnDone = row?.closest('[data-remove-done]') != null;
+    // striking it through. Project pages opt into the same behaviour for
+    // top-level tasks (done ones move to the Completed disclosure on next
+    // load) but keep subtasks struck-through in place, matching `countable`
+    // above — both are true only for a .task-row, never a .subtask.
+    const removeOnDone = countable && row?.closest('[data-remove-done]') != null;
 
     if (removeOnDone && checkbox.checked) {
       if (row) row.hidden = true;

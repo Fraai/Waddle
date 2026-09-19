@@ -274,8 +274,21 @@ body {
   width: 0.5rem;
   height: 0.5rem;
   flex: none;
+  border: 0;
+  padding: 0;
   border-radius: 999px;
   background: var(--dot, var(--text-3));
+}
+
+/* Only the sidebar's dot is a clickable colour-cycle button — the ones in
+   week.astro / the task composer are plain decorative spans. */
+button.project-dot {
+  cursor: pointer;
+  transition: transform var(--fast) var(--ease);
+}
+
+button.project-dot:hover {
+  transform: scale(1.3);
 }
 
 /* Always visible, like .task-href-badge — the point is to see a project's
