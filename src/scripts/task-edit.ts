@@ -2,8 +2,10 @@ import { actions } from 'astro:actions';
 
 // A due-date change can move a task into a different day group (Today's
 // "overdue" vs "due today", or a different Upcoming heading) and a priority
-// change re-sorts it — reloading is the simplest way to stay correct across
-// all three views, rather than re-deriving each page's grouping in JS.
+// change re-sorts it — reloading on either is the simplest way to stay
+// correct across all three views, rather than re-deriving each page's
+// grouping in JS. A title-only edit can't affect grouping, so that one
+// updates in place instead.
 function openEditor(li: HTMLElement): void {
   const main = li.querySelector<HTMLElement>('.task-main');
   const titleEl = main?.querySelector<HTMLElement>('.task-title');
@@ -66,6 +68,9 @@ function openEditor(li: HTMLElement): void {
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     saveBtn.disabled = true;
+    cancelBtn.disabled = true;
+    const dueChanged = dueInput.value !== currentDue;
+    const priorityChanged = prioritySelect.value !== currentPriority;
     const { error } = await actions.updateTask({
       taskId,
       title: titleInput.value,
@@ -75,15 +80,30 @@ function openEditor(li: HTMLElement): void {
     if (error) {
       alert(error.message);
       saveBtn.disabled = false;
+      cancelBtn.disabled = false;
       return;
     }
-    location.reload();
+    // A due-date or priority change can move the task into a different day
+    // group or section order — reload to stay correct. A title-only edit
+    // can't, so update in place instead of flashing the whole page.
+    if (dueChanged || priorityChanged) {
+      location.reload();
+      return;
+    }
+    titleEl.textContent = titleInput.value;
+    restore();
   });
 }
 
-document.querySelectorAll<HTMLElement>('.task-title').forEach((titleEl) => {
+export function attachTaskEdit(titleEl: HTMLElement): void {
   titleEl.addEventListener('click', () => {
     const li = titleEl.closest<HTMLElement>('li');
     if (li) openEditor(li);
   });
-});
+}
+
+export function attachTaskEdits(): void {
+  document.querySelectorAll<HTMLElement>('.task-title').forEach(attachTaskEdit);
+}
+
+attachTaskEdits();

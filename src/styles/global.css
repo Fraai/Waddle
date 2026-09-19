@@ -140,13 +140,16 @@ body {
   border-right: 1px solid var(--hairline);
 }
 
+/* Opaque, not the sidebar's frosted-glass treatment: page-head is scoped to
+   the narrow content column, not a true edge-anchored toolbar, so a
+   translucent blur here just reads as a mismatched, unpadded grey patch
+   behind the title. Matching the page background instead keeps it a solid
+   cap that content still disappears under while scrolling. */
 .page-head {
   position: sticky;
   top: 0;
   z-index: 3;
-  background: var(--chrome);
-  backdrop-filter: saturate(180%) blur(20px);
-  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  background: var(--bg);
   padding: var(--space-5) 0 var(--space-4);
   margin-bottom: var(--space-3);
 }
@@ -505,6 +508,16 @@ h2:hover > .icon-btn,
   transform: scale(0.97);
 }
 
+/* The only visible sign a create/save/rename is in flight — without this,
+   disabling a control during a request looks identical to doing nothing. */
+.btn:disabled,
+.field:disabled,
+.composer input:disabled,
+.composer select:disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
 .btn--primary {
   background: var(--accent);
   color: #fff;
@@ -590,8 +603,7 @@ h2:hover > .icon-btn,
 }
 
 @media (prefers-reduced-transparency: reduce) {
-  .sidebar,
-  .page-head {
+  .sidebar {
     background: var(--surface);
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
@@ -605,8 +617,7 @@ h2:hover > .icon-btn,
     --text-3: #48484a;
   }
 
-  .sidebar,
-  .page-head {
+  .sidebar {
     background: var(--surface);
     backdrop-filter: none;
     -webkit-backdrop-filter: none;

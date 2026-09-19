@@ -92,12 +92,12 @@ const projectHue = (id: number) => (id * 137.5) % 360;
           <li data-project-id={project.id} class="flex items-center gap-1">
             <a
               href={`/app/projects/${project.id}`}
-              class="nav-item flex-1"
+              class="nav-item flex-1 min-w-0"
               data-astro-prefetch
               aria-current={isActive(`/app/projects/${project.id}`) ? 'page' : undefined}
             >
               <span class="project-dot" style={`--dot: hsl(${projectHue(project.id)} 62% 52%)`}></span>
-              <span class="truncate">{project.name}</span>
+              <span class="truncate min-w-0">{project.name}</span>
             </a>
             <button class="project-rename icon-btn" data-project-id={project.id} title={`Rename ${project.name}`}>
               <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">

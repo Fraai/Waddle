@@ -27,7 +27,7 @@ const groups = groupUpcoming(tasks, today);
     {groups.length === 0 && <p class="empty">No upcoming tasks.</p>}
 
     {groups.map((group) => (
-      <section class="mb-6">
+      <section class="mb-6" data-date={group.date}>
         <h2 class="label-caps mb-2">{formatDateHeading(group.date, today)}</h2>
         <ul class="task-list" data-remove-done>
           {group.tasks.map((task) => (
@@ -54,7 +54,7 @@ const groups = groupUpcoming(tasks, today);
     ))}
 
     {inbox && (
-      <form method="POST" action={actions.createTask} class="composer mt-2">
+      <form method="POST" action={actions.createTask} class="composer mt-2" data-kind="upcoming">
         <input type="hidden" name="projectId" value={inbox.id} />
         <input name="title" placeholder="Add task" aria-label="Task title" required />
         <input type="date" name="dueDate" aria-label="Due date" min={today} required />
@@ -77,3 +77,4 @@ const groups = groupUpcoming(tasks, today);
 <script src="../../scripts/task-toggle.ts"></script>
 <script src="../../scripts/task-delete.ts"></script>
 <script src="../../scripts/task-edit.ts"></script>
+<script src="../../scripts/task-create.ts"></script>

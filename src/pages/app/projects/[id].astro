@@ -37,7 +37,7 @@ const today = todayISO();
 const openCount = topLevel.filter((t) => t.done_at === null).length;
 ---
 <AppLayout title={project.name}>
-  <div data-project-root={projectId} class="mx-auto max-w-2xl">
+  <div data-project-root={projectId} data-today={today} class="mx-auto max-w-2xl">
     <header class="page-head">
       <h1 class="page-title">{project.name}</h1>
       <p class="mt-1 text-sm" style="color: var(--text-2)" data-open-count={openCount}>
@@ -128,7 +128,7 @@ const openCount = topLevel.filter((t) => t.done_at === null).length;
           <p class="empty">Nothing here yet. Add your first task below.</p>
         )}
 
-        <form method="POST" action={actions.createTask} class="composer mt-2">
+        <form method="POST" action={actions.createTask} class="composer mt-2" data-kind="project">
           <input type="hidden" name="projectId" value={projectId} />
           {group.id !== null && <input type="hidden" name="sectionId" value={group.id} />}
           <input name="title" placeholder="Add task" aria-label="Task title" required />

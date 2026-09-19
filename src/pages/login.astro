@@ -10,21 +10,30 @@ import '../styles/global.css';
     <title>Sign in · Todo</title>
   </head>
   <body class="grid min-h-screen place-items-center p-6">
-    <main
-      class="w-full max-w-sm rounded-[var(--r-lg)] p-8 text-center"
-      style="background: var(--surface); border: 1px solid var(--hairline); box-shadow: var(--shadow-2)"
-    >
-      <div
-        class="mx-auto mb-4 grid h-12 w-12 place-items-center rounded-[var(--r-md)]"
-        style="background: var(--accent-soft); color: var(--accent)"
-      >
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-6 w-6">
-          <path d="M4.5 12.5l5 5 10-11" />
-        </svg>
-      </div>
+    <main class="w-full max-w-sm text-center">
+      <ul class="task-list mb-6 text-left" aria-hidden="true">
+        <li class="task-row" data-priority="1">
+          <div class="task-main">
+            <input type="checkbox" class="check" disabled tabindex="-1" />
+            <span class="task-title">Reply to client about hosting</span>
+          </div>
+        </li>
+        <li class="task-row" data-priority="4">
+          <div class="task-main">
+            <input type="checkbox" class="check" checked disabled tabindex="-1" />
+            <span class="task-title" data-done>Ship this week's deploy</span>
+          </div>
+        </li>
+        <li class="task-row" data-priority="3">
+          <div class="task-main">
+            <input type="checkbox" class="check" disabled tabindex="-1" />
+            <span class="task-title">Plan next sprint</span>
+          </div>
+        </li>
+      </ul>
 
-      <h1 class="text-2xl font-semibold tracking-[-0.02em]">Todo</h1>
-      <p class="mx-auto mt-2 max-w-[22ch] text-sm" style="color: var(--text-2)">
+      <h1 class="page-title">Todo</h1>
+      <p class="mx-auto mt-2 max-w-[26ch] text-sm" style="color: var(--text-2)">
         The internal task list for the fraai.agency team.
       </p>
 
@@ -38,7 +47,7 @@ import '../styles/global.css';
         Sign in with Google
       </a>
 
-      <p class="mt-4 text-xs" style="color: var(--text-3)">@fraai.agency accounts only</p>
+      <p class="mt-3 text-xs" style="color: var(--text-3)">@fraai.agency accounts only</p>
     </main>
   </body>
 </html>
