@@ -213,6 +213,57 @@ describe('toggleTaskDone', () => {
     [reloaded] = await db.listTasksByProject(env.DB, userId, projectId);
     expect(reloaded.done_at).toBeNull();
   });
+
+  it('spawns the next occurrence when completing a repeating task with a due date', async () => {
+    const task = await db.createTask(env.DB, userId, {
+      projectId, title: 'Water plants', dueDate: '2026-03-10', repeatRule: 'weekly',
+    });
+    const { nextOccurrenceCreated } = await db.toggleTaskDone(env.DB, userId, task.id);
+    expect(nextOccurrenceCreated).toBe(true);
+
+    const tasks = await db.listTasksByProject(env.DB, userId, projectId);
+    expect(tasks).toHaveLength(2);
+    const original = tasks.find((t) => t.id === task.id)!;
+    const next = tasks.find((t) => t.id !== task.id)!;
+    expect(original.done_at).not.toBeNull();
+    expect(next.done_at).toBeNull();
+    expect(next.due_date).toBe('2026-03-17');
+    expect(next.repeat_rule).toBe('weekly');
+    expect(next.title).toBe('Water plants');
+  });
+
+  it('does not spawn a next occurrence for a repeating task with no due date', async () => {
+    const task = await db.createTask(env.DB, userId, { projectId, title: 'No date', repeatRule: 'daily' });
+    const { nextOccurrenceCreated } = await db.toggleTaskDone(env.DB, userId, task.id);
+    expect(nextOccurrenceCreated).toBe(false);
+
+    const tasks = await db.listTasksByProject(env.DB, userId, projectId);
+    expect(tasks).toHaveLength(1);
+  });
+
+  it('does not spawn a next occurrence when un-completing a task', async () => {
+    const task = await db.createTask(env.DB, userId, {
+      projectId, title: 'Recurring', dueDate: '2026-03-10', repeatRule: 'daily',
+    });
+    await db.toggleTaskDone(env.DB, userId, task.id); // done -> spawns one occurrence
+    const { nextOccurrenceCreated } = await db.toggleTaskDone(env.DB, userId, task.id); // back to open
+    expect(nextOccurrenceCreated).toBe(false);
+
+    const tasks = await db.listTasksByProject(env.DB, userId, projectId);
+    expect(tasks).toHaveLength(2);
+  });
+
+  it('carries the parent along when completing a repeating subtask', async () => {
+    const parent = await db.createTask(env.DB, userId, { projectId, title: 'Parent' });
+    const sub = await db.createTask(env.DB, userId, {
+      projectId, parentTaskId: parent.id, title: 'Sub', dueDate: '2026-03-10', repeatRule: 'daily',
+    });
+    await db.toggleTaskDone(env.DB, userId, sub.id);
+
+    const tasks = await db.listTasksByProject(env.DB, userId, projectId);
+    const next = tasks.find((t) => t.id !== sub.id && t.id !== parent.id)!;
+    expect(next.parent_task_id).toBe(parent.id);
+  });
 });
 
 describe('deleteTask', () => {

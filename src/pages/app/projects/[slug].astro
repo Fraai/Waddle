@@ -6,6 +6,7 @@ import * as db from '../../../lib/db';
 import { withSlugs } from '../../../lib/slug';
 import { todayISO } from '../../../lib/dates';
 import { formatDate } from '../../../lib/format';
+import { repeatRuleLabel } from '../../../lib/repeat';
 
 const user = Astro.locals.user!;
 const slug = Astro.params.slug;
@@ -82,6 +83,7 @@ const openCount = openTopLevel.length;
               data-due-date={task.due_date ?? ''}
               data-description={task.description ?? ''}
               data-href={task.href ?? ''}
+              data-repeat-rule={task.repeat_rule ?? ''}
               data-project-id={projectId}
               class="task-row"
             >
@@ -94,6 +96,15 @@ const openCount = openTopLevel.length;
                   aria-label={`Mark "${task.title}" done`}
                 />
                 <span class="task-title" data-done={task.done_at ? '' : undefined}>{task.title}</span>
+                {task.repeat_rule && (
+                  <span class="task-repeat-badge" title={repeatRuleLabel(task.repeat_rule)}>
+                    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M2.5 8a5.5 5.5 0 0 1 9.5-3.8M13.5 8a5.5 5.5 0 0 1-9.5 3.8" />
+                      <path d="M12 1.5v2.7h-2.7M4 14.5v-2.7h2.7" />
+                    </svg>
+                    <span class="sr-only">Repeats: {repeatRuleLabel(task.repeat_rule)}</span>
+                  </span>
+                )}
                 {task.href && (
                   <a class="task-href-badge" href={task.href} target="_blank" rel="noopener" title={task.href}>
                     <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
@@ -125,6 +136,7 @@ const openCount = openTopLevel.length;
                       data-due-date={sub.due_date ?? ''}
                       data-description={sub.description ?? ''}
                       data-href={sub.href ?? ''}
+                      data-repeat-rule={sub.repeat_rule ?? ''}
                     >
                       <div class="task-main">
                         <input
@@ -135,6 +147,15 @@ const openCount = openTopLevel.length;
                           aria-label={`Mark "${sub.title}" done`}
                         />
                         <span class="task-title" data-done={sub.done_at ? '' : undefined}>{sub.title}</span>
+                        {sub.repeat_rule && (
+                          <span class="task-repeat-badge" title={repeatRuleLabel(sub.repeat_rule)}>
+                            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+                              <path d="M2.5 8a5.5 5.5 0 0 1 9.5-3.8M13.5 8a5.5 5.5 0 0 1-9.5 3.8" />
+                              <path d="M12 1.5v2.7h-2.7M4 14.5v-2.7h2.7" />
+                            </svg>
+                            <span class="sr-only">Repeats: {repeatRuleLabel(sub.repeat_rule)}</span>
+                          </span>
+                        )}
                         {sub.href && (
                           <a class="task-href-badge" href={sub.href} target="_blank" rel="noopener" title={sub.href}>
                             <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
@@ -213,6 +234,7 @@ const openCount = openTopLevel.length;
               data-due-date={task.due_date ?? ''}
               data-description={task.description ?? ''}
               data-href={task.href ?? ''}
+              data-repeat-rule={task.repeat_rule ?? ''}
               data-project-id={projectId}
               class="task-row"
             >
@@ -225,6 +247,15 @@ const openCount = openTopLevel.length;
                   aria-label={`Mark "${task.title}" done`}
                 />
                 <span class="task-title" data-done>{task.title}</span>
+                {task.repeat_rule && (
+                  <span class="task-repeat-badge" title={repeatRuleLabel(task.repeat_rule)}>
+                    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M2.5 8a5.5 5.5 0 0 1 9.5-3.8M13.5 8a5.5 5.5 0 0 1-9.5 3.8" />
+                      <path d="M12 1.5v2.7h-2.7M4 14.5v-2.7h2.7" />
+                    </svg>
+                    <span class="sr-only">Repeats: {repeatRuleLabel(task.repeat_rule)}</span>
+                  </span>
+                )}
                 {task.href && (
                   <a class="task-href-badge" href={task.href} target="_blank" rel="noopener" title={task.href}>
                     <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">

@@ -144,8 +144,7 @@ export const server = {
     input: toggleTaskDoneSchema,
     handler: async (input, context) => {
       const user = requireUser(context);
-      await wrapNotFound(() => db.toggleTaskDone(env.DB, user.id, input.taskId));
-      return { success: true };
+      return wrapNotFound(() => db.toggleTaskDone(env.DB, user.id, input.taskId));
     },
   }),
   deleteTask: defineAction({

@@ -6,7 +6,7 @@ import { z } from 'zod';
 import * as db from '../../lib/db';
 import { getUserByEmail, type User } from '../../lib/users';
 import { todayISO, splitOverdueAndToday, groupUpcoming } from '../../lib/dates';
-import { descriptionField, hrefField } from '../../lib/validation';
+import { descriptionField, hrefField, repeatRuleField } from '../../lib/validation';
 
 // A single token maps to a single account (env.MCP_USER_EMAIL) — this is a
 // personal-automation tool, not a multi-tenant API. Using the same token
@@ -47,6 +47,7 @@ function taskView(task: db.Task) {
     href: task.href,
     dueDate: task.due_date,
     priority: task.priority,
+    repeatRule: task.repeat_rule,
     done: task.done_at !== null,
   };
 }
@@ -174,9 +175,12 @@ function buildServer(user: User): McpServer {
         description: descriptionField,
         href: hrefField.describe('A link — a bare domain like "example.com" is fine, https:// is assumed'),
         parentTaskId: z.number().int().positive().optional().describe('Set to create this as a subtask'),
+        repeatRule: repeatRuleField.describe(
+          'Repeat on completion: "daily", "weekly", "monthly", or "every:N:days". Only takes effect if dueDate is set — completing the task then creates its next occurrence.',
+        ),
       },
     },
-    async ({ title, project, dueDate, priority, description, href, parentTaskId }) => {
+    async ({ title, project, dueDate, priority, description, href, parentTaskId, repeatRule }) => {
       const resolved = await resolveProject(user.id, project);
       if (!resolved) return toolError(`No project matches "${project}".`);
       try {
@@ -188,6 +192,7 @@ function buildServer(user: User): McpServer {
           href: href ?? null,
           dueDate: dueDate ?? null,
           priority,
+          repeatRule: repeatRule ?? null,
         });
         return toolResult(taskView(task));
       } catch (err) {
@@ -206,8 +211,8 @@ function buildServer(user: User): McpServer {
     },
     async ({ taskId }) => {
       try {
-        await db.toggleTaskDone(env.DB, user.id, taskId);
-        return toolResult({ taskId, toggled: true });
+        const { nextOccurrenceCreated } = await db.toggleTaskDone(env.DB, user.id, taskId);
+        return toolResult({ taskId, toggled: true, nextOccurrenceCreated });
       } catch (err) {
         if (err instanceof db.NotFoundError) return toolError(err.message);
         throw err;

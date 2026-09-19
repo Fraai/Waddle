@@ -5,6 +5,7 @@ import { env } from 'cloudflare:workers';
 import { listOpenDatedTasks, listProjects } from '../../lib/db';
 import { todayISO, getWeekDates, groupWeek } from '../../lib/dates';
 import { formatWeekday, formatDayMonth } from '../../lib/format';
+import { repeatRuleLabel } from '../../lib/repeat';
 
 const user = Astro.locals.user!;
 const [tasks, projects] = await Promise.all([
@@ -51,6 +52,7 @@ const days = groupWeek(tasks, weekDates);
               data-due-date={task.due_date}
               data-description={task.description ?? ''}
               data-href={task.href ?? ''}
+              data-repeat-rule={task.repeat_rule ?? ''}
               data-project-type={taskProjectType(task)}
               data-project-id={task.project_id}
               class="task-row"
@@ -68,6 +70,15 @@ const days = groupWeek(tasks, weekDates);
                   title={projectsById.get(task.project_id)?.name}
                 ></span>
                 <span class="task-title">{task.title}</span>
+                {task.repeat_rule && (
+                  <span class="task-repeat-badge" title={repeatRuleLabel(task.repeat_rule)}>
+                    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M2.5 8a5.5 5.5 0 0 1 9.5-3.8M13.5 8a5.5 5.5 0 0 1-9.5 3.8" />
+                      <path d="M12 1.5v2.7h-2.7M4 14.5v-2.7h2.7" />
+                    </svg>
+                    <span class="sr-only">Repeats: {repeatRuleLabel(task.repeat_rule)}</span>
+                  </span>
+                )}
                 {task.href && (
                   <a class="task-href-badge" href={task.href} target="_blank" rel="noopener" title={task.href}>
                     <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">

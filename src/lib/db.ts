@@ -1,3 +1,5 @@
+import { nextDueDate } from './repeat';
+
 export class NotFoundError extends Error {}
 
 export interface Project {
@@ -168,6 +170,7 @@ export interface Task {
   href: string | null;
   due_date: string | null;
   priority: number;
+  repeat_rule: string | null;
   done_at: string | null;
   position: number;
   created_at: string;
@@ -183,6 +186,7 @@ export interface CreateTaskInput {
   href?: string | null;
   dueDate?: string | null;
   priority?: number;
+  repeatRule?: string | null;
 }
 
 export async function listTasksByProject(db: D1Database, userId: number, projectId: number): Promise<Task[]> {
@@ -222,12 +226,12 @@ export async function createTask(db: D1Database, userId: number, input: CreateTa
   const nextPosition = (row?.max ?? 0) + 1;
 
   const result = await db.prepare(
-    `INSERT INTO tasks (user_id, project_id, section_id, parent_task_id, title, description, href, due_date, priority, position)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING *`,
+    `INSERT INTO tasks (user_id, project_id, section_id, parent_task_id, title, description, href, due_date, priority, repeat_rule, position)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING *`,
   ).bind(
     userId, input.projectId, input.sectionId ?? null, input.parentTaskId ?? null,
     input.title, input.description ?? null, input.href ?? null,
-    input.dueDate ?? null, input.priority ?? 4, nextPosition,
+    input.dueDate ?? null, input.priority ?? 4, input.repeatRule ?? null, nextPosition,
   ).first<Task>();
   if (!result) throw new Error('Failed to create task');
   return result;
@@ -241,6 +245,7 @@ export interface UpdateTaskInput {
   priority?: number;
   projectId?: number;
   sectionId?: number | null;
+  repeatRule?: string | null;
 }
 
 export async function updateTask(
@@ -272,7 +277,7 @@ export async function updateTask(
   }
 
   const updateThis = db.prepare(
-    `UPDATE tasks SET title = ?, description = ?, href = ?, due_date = ?, priority = ?, project_id = ?, section_id = ?, updated_at = datetime('now')
+    `UPDATE tasks SET title = ?, description = ?, href = ?, due_date = ?, priority = ?, repeat_rule = ?, project_id = ?, section_id = ?, updated_at = datetime('now')
      WHERE id = ? AND user_id = ?`,
   ).bind(
     input.title ?? task.title,
@@ -280,6 +285,7 @@ export async function updateTask(
     input.href !== undefined ? input.href : task.href,
     input.dueDate !== undefined ? input.dueDate : task.due_date,
     input.priority ?? task.priority,
+    input.repeatRule !== undefined ? input.repeatRule : task.repeat_rule,
     projectId,
     sectionId,
     taskId, userId,
@@ -302,13 +308,36 @@ export async function updateTask(
   await db.batch([updateThis, moveChildren]);
 }
 
-export async function toggleTaskDone(db: D1Database, userId: number, taskId: number): Promise<void> {
-  const task = await db.prepare('SELECT done_at FROM tasks WHERE id = ? AND user_id = ?')
-    .bind(taskId, userId).first<{ done_at: string | null }>();
+export async function toggleTaskDone(
+  db: D1Database, userId: number, taskId: number,
+): Promise<{ nextOccurrenceCreated: boolean }> {
+  const task = await db.prepare('SELECT * FROM tasks WHERE id = ? AND user_id = ?')
+    .bind(taskId, userId).first<Task>();
   if (!task) throw new NotFoundError('Task not found');
 
+  const markingDone = task.done_at === null;
   await db.prepare(`UPDATE tasks SET done_at = ?, updated_at = datetime('now') WHERE id = ? AND user_id = ?`)
-    .bind(task.done_at ? null : new Date().toISOString(), taskId, userId).run();
+    .bind(markingDone ? new Date().toISOString() : null, taskId, userId).run();
+
+  // Completing a repeating task spawns its next occurrence as an ordinary
+  // new task with the same rule copied onto it — no separate series to
+  // track. A repeat rule with no due date has nothing to roll forward from,
+  // so it just completes like a normal task instead.
+  if (markingDone && task.repeat_rule && task.due_date) {
+    await createTask(db, userId, {
+      projectId: task.project_id,
+      sectionId: task.section_id,
+      parentTaskId: task.parent_task_id,
+      title: task.title,
+      description: task.description,
+      href: task.href,
+      dueDate: nextDueDate(task.due_date, task.repeat_rule),
+      priority: task.priority,
+      repeatRule: task.repeat_rule,
+    });
+    return { nextOccurrenceCreated: true };
+  }
+  return { nextOccurrenceCreated: false };
 }
 
 export async function deleteTask(db: D1Database, userId: number, taskId: number): Promise<void> {

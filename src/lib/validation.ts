@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { isValidRepeatRule } from './repeat';
 
 export const requiredText = (message: string) => z.string().trim().min(1, message);
 export const idParam = z.coerce.number().int().positive();
@@ -82,6 +83,14 @@ export const hrefField = z.preprocess((v) => {
   return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
 }, z.string().url('Must be a valid URL').max(2000).nullable().optional());
 
+// "" (the modal's "Doesn't repeat" option) maps to null, same idea as
+// dateString/descriptionField above.
+export const repeatRuleField = z.preprocess((v) => {
+  if (v == null) return v;
+  const trimmed = String(v).trim();
+  return trimmed === '' ? null : trimmed;
+}, z.string().refine(isValidRepeatRule, 'Invalid repeat rule').nullable().optional());
+
 export const createTaskSchema = z.object({
   projectId: idParam,
   sectionId: idParam.optional(),
@@ -99,6 +108,7 @@ export const updateTaskSchema = z.object({
   sectionId: idParam.nullable().optional(),
   description: descriptionField,
   href: hrefField,
+  repeatRule: repeatRuleField,
 });
 export const toggleTaskDoneSchema = z.object({ taskId: idParam });
 export const deleteTaskSchema = z.object({ taskId: idParam });

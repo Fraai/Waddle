@@ -1,7 +1,10 @@
 import { actions } from 'astro:actions';
+import { CUSTOM_REPEAT_RE, repeatRuleLabel } from '../lib/repeat';
 
 const LINK_ICON =
   '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 9.5 13 3M9 3h4v4M12 9v3a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h3" /></svg>';
+const REPEAT_ICON =
+  '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 8a5.5 5.5 0 0 1 9.5-3.8M13.5 8a5.5 5.5 0 0 1-9.5 3.8" /><path d="M12 1.5v2.7h-2.7M4 14.5v-2.7h2.7" /></svg>';
 
 interface ProjectOption {
   id: number;
@@ -22,6 +25,8 @@ interface Modal {
   projectSelect: HTMLSelectElement;
   dueInput: HTMLInputElement;
   prioritySelect: HTMLSelectElement;
+  repeatSelect: HTMLSelectElement;
+  repeatCustomInput: HTMLInputElement;
   saveBtn: HTMLButtonElement;
   deleteBtn: HTMLButtonElement;
 }
@@ -31,7 +36,7 @@ let modal: Modal | null = null;
 // currently open for, and what it looked like when opened, so submit can
 // diff against the original values and decide whether a reload is needed.
 let activeLi: HTMLElement | null = null;
-let baseline: { dueDate: string; priority: string; projectId: string } | null = null;
+let baseline: { dueDate: string; priority: string; projectId: string; repeatRule: string } | null = null;
 
 // If a close is still fading out when a new one is requested (e.g. openTaskModal
 // force-finishing it before reopening), this finishes it immediately instead of
@@ -126,6 +131,32 @@ function buildModal(): Modal {
   }
   metaRow.append(dueInput, prioritySelect);
 
+  const repeatRow = document.createElement('div');
+  repeatRow.className = 'task-modal-row';
+  const repeatSelect = document.createElement('select');
+  repeatSelect.className = 'field';
+  const REPEAT_OPTIONS: [string, string][] = [
+    ['', "Doesn't repeat"], ['daily', 'Daily'], ['weekly', 'Weekly'], ['monthly', 'Monthly'], ['custom', 'Every…'],
+  ];
+  for (const [value, label] of REPEAT_OPTIONS) {
+    const opt = document.createElement('option');
+    opt.value = value;
+    opt.textContent = label;
+    repeatSelect.append(opt);
+  }
+  const repeatCustomInput = document.createElement('input');
+  repeatCustomInput.type = 'number';
+  repeatCustomInput.min = '1';
+  repeatCustomInput.className = 'field';
+  repeatCustomInput.style.width = '4.5rem';
+  repeatCustomInput.placeholder = 'days';
+  repeatCustomInput.hidden = true;
+  repeatSelect.addEventListener('change', () => {
+    repeatCustomInput.hidden = repeatSelect.value !== 'custom';
+    if (repeatSelect.value === 'custom' && !repeatCustomInput.value) repeatCustomInput.value = '3';
+  });
+  repeatRow.append(repeatSelect, repeatCustomInput);
+
   const actionsRow = document.createElement('div');
   actionsRow.className = 'task-modal-actions';
   const deleteBtn = document.createElement('button');
@@ -145,7 +176,7 @@ function buildModal(): Modal {
   actionsRight.append(cancelBtn, saveBtn);
   actionsRow.append(deleteBtn, actionsRight);
 
-  form.append(head, descriptionInput, projectSelect, hrefRow, metaRow, actionsRow);
+  form.append(head, descriptionInput, projectSelect, hrefRow, metaRow, repeatRow, actionsRow);
   dialog.append(form);
   document.body.append(dialog);
 
@@ -189,6 +220,8 @@ function buildModal(): Modal {
     // Hidden for a subtask (see openTaskModal) — baseline.projectId is '' in
     // that case, which would otherwise never match any real option value.
     const projectChanged = !projectSelect.hidden && projectSelect.value !== baseline.projectId;
+    const repeatRule = repeatRuleFromInputs(repeatSelect, repeatCustomInput);
+    const repeatRuleChanged = (repeatRule ?? '') !== baseline.repeatRule;
 
     const { error } = await actions.updateTask({
       taskId: Number(li.dataset.taskId),
@@ -198,6 +231,7 @@ function buildModal(): Modal {
       dueDate: dueInput.value || null,
       priority: Number(prioritySelect.value),
       ...(projectChanged ? { projectId: Number(projectSelect.value) } : {}),
+      ...(repeatRuleChanged ? { repeatRule } : {}),
     });
 
     if (error) {
@@ -221,6 +255,8 @@ function buildModal(): Modal {
     li.dataset.description = descriptionInput.value;
     li.dataset.href = hrefInput.value;
     syncHrefBadge(li, hrefInput.value);
+    li.dataset.repeatRule = repeatRule ?? '';
+    syncRepeatBadge(li, repeatRule ?? '');
     saveBtn.disabled = false;
     deleteBtn.disabled = false;
     closeModal(dialog);
@@ -228,7 +264,7 @@ function buildModal(): Modal {
 
   return {
     dialog, titleInput, descriptionInput, hrefInput, hrefOpen, projectSelect, dueInput, prioritySelect,
-    saveBtn, deleteBtn,
+    repeatSelect, repeatCustomInput, saveBtn, deleteBtn,
   };
 }
 
@@ -262,6 +298,48 @@ export function syncHrefBadge(li: HTMLElement, href: string): void {
   badge.title = href;
 }
 
+/** Adds, updates, or removes a row's small "this repeats" badge in place —
+ * same idea as syncHrefBadge above. */
+export function syncRepeatBadge(li: HTMLElement, rule: string): void {
+  const main = li.querySelector<HTMLElement>('.task-main');
+  const titleEl = main?.querySelector<HTMLElement>('.task-title');
+  if (!main || !titleEl) return;
+  let badge = main.querySelector<HTMLElement>('.task-repeat-badge');
+
+  if (!rule) {
+    badge?.remove();
+    return;
+  }
+  if (!badge) {
+    badge = document.createElement('span');
+    badge.className = 'task-repeat-badge';
+    badge.innerHTML = REPEAT_ICON;
+    titleEl.insertAdjacentElement('afterend', badge);
+  }
+  badge.title = repeatRuleLabel(rule);
+}
+
+function repeatRuleFromInputs(repeatSelect: HTMLSelectElement, repeatCustomInput: HTMLInputElement): string | null {
+  if (repeatSelect.value === '') return null;
+  if (repeatSelect.value === 'custom') {
+    const n = Math.max(1, Math.floor(Number(repeatCustomInput.value)) || 1);
+    return `every:${n}:days`;
+  }
+  return repeatSelect.value;
+}
+
+function applyRepeatRuleToInputs(rule: string, repeatSelect: HTMLSelectElement, repeatCustomInput: HTMLInputElement): void {
+  const match = rule.match(CUSTOM_REPEAT_RE);
+  if (match) {
+    repeatSelect.value = 'custom';
+    repeatCustomInput.value = match[1];
+    repeatCustomInput.hidden = false;
+  } else {
+    repeatSelect.value = rule;
+    repeatCustomInput.hidden = true;
+  }
+}
+
 function openTaskModal(li: HTMLElement): void {
   const titleEl = li.querySelector<HTMLElement>('.task-title');
   if (!titleEl) return;
@@ -276,7 +354,8 @@ function openTaskModal(li: HTMLElement): void {
   const dueDate = li.dataset.dueDate || '';
   const priority = li.dataset.priority || '4';
   const projectId = li.dataset.projectId || '';
-  baseline = { dueDate, priority, projectId };
+  const repeatRule = li.dataset.repeatRule || '';
+  baseline = { dueDate, priority, projectId, repeatRule };
 
   m.titleInput.value = titleEl.textContent ?? '';
   m.descriptionInput.value = li.dataset.description || '';
@@ -286,6 +365,12 @@ function openTaskModal(li: HTMLElement): void {
   m.projectSelect.value = projectId;
   m.dueInput.value = dueDate;
   m.prioritySelect.value = priority;
+  if (repeatRule) {
+    applyRepeatRuleToInputs(repeatRule, m.repeatSelect, m.repeatCustomInput);
+  } else {
+    m.repeatSelect.value = '';
+    m.repeatCustomInput.hidden = true;
+  }
   m.saveBtn.disabled = false;
   m.deleteBtn.disabled = false;
   m.deleteBtn.hidden = false;

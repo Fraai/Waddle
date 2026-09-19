@@ -831,6 +831,23 @@ h2:hover > .icon-btn,
   height: 0.8rem;
 }
 
+/* Same idea as .task-href-badge — a small, always-visible "this repeats"
+   indicator, not hover-gated. Not interactive (no click target of its own;
+   the whole row already opens the edit modal), so no hover/focus state. */
+.task-repeat-badge {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 1.25rem;
+  height: 1.25rem;
+  color: var(--text-3);
+}
+
+.task-repeat-badge svg {
+  width: 0.8rem;
+  height: 0.8rem;
+}
+
 /* ==========================================================================
    Task detail modal
    ========================================================================== */

@@ -38,7 +38,7 @@ export function attachTaskToggle(checkbox: HTMLInputElement): void {
     }
     if (countable) bumpOpenCount(checkbox.checked ? -1 : 1);
 
-    const { error } = await actions.toggleTaskDone({ taskId });
+    const { error, data } = await actions.toggleTaskDone({ taskId });
     if (error) {
       checkbox.checked = !checkbox.checked;
       if (removeOnDone) {
@@ -48,6 +48,13 @@ export function attachTaskToggle(checkbox: HTMLInputElement): void {
       }
       if (countable) bumpOpenCount(checkbox.checked ? -1 : 1);
       alert(error.message);
+      return;
+    }
+    // A repeating task's next occurrence was just created server-side —
+    // simplest to reload than to work out where (if anywhere) it belongs in
+    // whatever list is currently on screen.
+    if (data?.nextOccurrenceCreated) {
+      location.reload();
       return;
     }
     if (removeOnDone && row) row.hidden = true;
