@@ -1,6 +1,6 @@
 # CLAUDE.md — todo.fraai.agency
 
-Internal Todoist alternative for the fraai.agency team. Astro SSR on Cloudflare Workers + D1.
+Internal Todoist alternative for the Fraai Agency team. Astro SSR on Cloudflare Workers + D1.
 
 ## What this app is
 
