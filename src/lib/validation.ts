@@ -43,6 +43,24 @@ export const reorderSectionsSchema = z.object({
   orderedIds: z.array(idParam).min(1),
 });
 
+// updateTask takes a plain JS object (no accept:'form'), so unlike
+// dateString above there's no FormData null/undefined quirk to work around
+// here — the caller decides null (clear it) vs undefined (leave it alone).
+export const descriptionField = z.preprocess((v) => {
+  if (v == null) return v;
+  const trimmed = String(v).trim();
+  return trimmed === '' ? null : trimmed;
+}, z.string().max(2000).nullable().optional());
+
+// A bare "example.com" is a reasonable thing to type into a link field —
+// assume https:// rather than reject it.
+export const hrefField = z.preprocess((v) => {
+  if (v == null) return v;
+  const trimmed = String(v).trim();
+  if (trimmed === '') return null;
+  return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+}, z.string().url('Must be a valid URL').max(2000).nullable().optional());
+
 export const createTaskSchema = z.object({
   projectId: idParam,
   sectionId: idParam.optional(),
@@ -58,6 +76,8 @@ export const updateTaskSchema = z.object({
   priority: z.coerce.number().int().min(1).max(4).optional(),
   projectId: idParam.optional(),
   sectionId: idParam.nullable().optional(),
+  description: descriptionField,
+  href: hrefField,
 });
 export const toggleTaskDoneSchema = z.object({ taskId: idParam });
 export const deleteTaskSchema = z.object({ taskId: idParam });

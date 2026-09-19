@@ -67,7 +67,14 @@ const openCount = topLevel.filter((t) => t.done_at === null).length;
 
         <ul class="task-list" data-section-id={group.id ?? ''}>
           {group.tasks.map((task) => (
-            <li data-task-id={task.id} data-priority={task.priority} data-due-date={task.due_date ?? ''} class="task-row">
+            <li
+              data-task-id={task.id}
+              data-priority={task.priority}
+              data-due-date={task.due_date ?? ''}
+              data-description={task.description ?? ''}
+              data-href={task.href ?? ''}
+              class="task-row"
+            >
               <div class="task-main">
                 <input
                   type="checkbox"
@@ -77,6 +84,14 @@ const openCount = topLevel.filter((t) => t.done_at === null).length;
                   aria-label={`Mark "${task.title}" done`}
                 />
                 <span class="task-title" data-done={task.done_at ? '' : undefined}>{task.title}</span>
+                {task.href && (
+                  <a class="task-href-badge" href={task.href} target="_blank" rel="noopener" title={task.href}>
+                    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M6.5 9.5 13 3M9 3h4v4M12 9v3a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h3" />
+                    </svg>
+                    <span class="sr-only">Open link</span>
+                  </a>
+                )}
                 {task.due_date && (
                   <span class:list={['pill', task.due_date < today && !task.done_at && 'pill--overdue']}>
                     {formatDate(task.due_date)}
@@ -93,7 +108,14 @@ const openCount = topLevel.filter((t) => t.done_at === null).length;
               {(subtasksByParent.get(task.id) ?? []).length > 0 && (
                 <ul class="subtasks">
                   {(subtasksByParent.get(task.id) ?? []).map((sub) => (
-                    <li class="subtask" data-task-id={sub.id} data-priority={sub.priority} data-due-date={sub.due_date ?? ''}>
+                    <li
+                      class="subtask"
+                      data-task-id={sub.id}
+                      data-priority={sub.priority}
+                      data-due-date={sub.due_date ?? ''}
+                      data-description={sub.description ?? ''}
+                      data-href={sub.href ?? ''}
+                    >
                       <div class="task-main">
                         <input
                           type="checkbox"
@@ -103,6 +125,14 @@ const openCount = topLevel.filter((t) => t.done_at === null).length;
                           aria-label={`Mark "${sub.title}" done`}
                         />
                         <span class="task-title" data-done={sub.done_at ? '' : undefined}>{sub.title}</span>
+                        {sub.href && (
+                          <a class="task-href-badge" href={sub.href} target="_blank" rel="noopener" title={sub.href}>
+                            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+                              <path d="M6.5 9.5 13 3M9 3h4v4M12 9v3a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h3" />
+                            </svg>
+                            <span class="sr-only">Open link</span>
+                          </a>
+                        )}
                       </div>
                     </li>
                   ))}

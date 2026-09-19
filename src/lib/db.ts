@@ -141,6 +141,8 @@ export interface Task {
   section_id: number | null;
   parent_task_id: number | null;
   title: string;
+  description: string | null;
+  href: string | null;
   due_date: string | null;
   priority: number;
   done_at: string | null;
@@ -207,6 +209,8 @@ export async function createTask(db: D1Database, userId: number, input: CreateTa
 
 export interface UpdateTaskInput {
   title?: string;
+  description?: string | null;
+  href?: string | null;
   dueDate?: string | null;
   priority?: number;
   projectId?: number;
@@ -242,10 +246,12 @@ export async function updateTask(
   }
 
   await db.prepare(
-    `UPDATE tasks SET title = ?, due_date = ?, priority = ?, project_id = ?, section_id = ?, updated_at = datetime('now')
+    `UPDATE tasks SET title = ?, description = ?, href = ?, due_date = ?, priority = ?, project_id = ?, section_id = ?, updated_at = datetime('now')
      WHERE id = ? AND user_id = ?`,
   ).bind(
     input.title ?? task.title,
+    input.description !== undefined ? input.description : task.description,
+    input.href !== undefined ? input.href : task.href,
     input.dueDate !== undefined ? input.dueDate : task.due_date,
     input.priority ?? task.priority,
     projectId,

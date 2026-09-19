@@ -48,7 +48,7 @@ npm run deploy    # Build and deploy to Cloudflare
 - `src/lib/dates.ts` — Today/Upcoming date-grouping (Europe/Brussels timezone)
 - `src/actions/index.ts` — all mutations (Astro Actions)
 - `src/pages/app/` — Today, Upcoming, and per-project views
-- `migrations/` — D1 schema (`0001_init.sql` base schema, `0002_unique_inbox_per_user.sql` adds the one-inbox-per-user constraint)
+- `migrations/` — D1 schema (`0001_init.sql` base schema, `0002_unique_inbox_per_user.sql` adds the one-inbox-per-user constraint, `0003_add_task_description_href.sql` adds `tasks.description`/`tasks.href`, edited via the task detail modal — see `src/scripts/task-edit.ts`)
 
 ## What was intentionally left out of the MVP
 

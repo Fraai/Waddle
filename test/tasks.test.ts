@@ -66,6 +66,31 @@ describe('updateTaskSchema', () => {
     expect(result.success).toBe(true);
     expect(result.data?.dueDate).toBe('2026-01-01');
   });
+
+  it('clears description and href with an explicit null', () => {
+    const result = updateTaskSchema.safeParse({ taskId: '1', dueDate: null, description: null, href: null });
+    expect(result.success).toBe(true);
+    expect(result.data?.description).toBeNull();
+    expect(result.data?.href).toBeNull();
+  });
+
+  it('treats a blank description/href as clearing it, not as the literal empty string', () => {
+    const result = updateTaskSchema.safeParse({ taskId: '1', dueDate: null, description: '  ', href: '' });
+    expect(result.success).toBe(true);
+    expect(result.data?.description).toBeNull();
+    expect(result.data?.href).toBeNull();
+  });
+
+  it('assumes https:// for a bare domain', () => {
+    const result = updateTaskSchema.safeParse({ taskId: '1', dueDate: null, href: 'example.com/doc' });
+    expect(result.success).toBe(true);
+    expect(result.data?.href).toBe('https://example.com/doc');
+  });
+
+  it('rejects an href that still is not a valid URL', () => {
+    const result = updateTaskSchema.safeParse({ taskId: '1', dueDate: null, href: 'not a url' });
+    expect(result.success).toBe(false);
+  });
 });
 
 describe('createTask', () => {
@@ -130,6 +155,26 @@ describe('updateTask', () => {
     const theirProject = await db.createProject(env.DB, otherUserId, 'Theirs');
     const theirTask = await db.createTask(env.DB, otherUserId, { projectId: theirProject.id, title: 'Theirs' });
     await expect(db.updateTask(env.DB, userId, theirTask.id, { title: 'Hijacked' })).rejects.toBeInstanceOf(db.NotFoundError);
+  });
+
+  it('sets description and href, leaving them alone on a later update that omits them', async () => {
+    const task = await db.createTask(env.DB, userId, { projectId, title: 'Task' });
+    await db.updateTask(env.DB, userId, task.id, { description: 'Notes here', href: 'https://example.com' });
+    await db.updateTask(env.DB, userId, task.id, { title: 'Renamed' });
+
+    const [reloaded] = await db.listTasksByProject(env.DB, userId, projectId);
+    expect(reloaded.description).toBe('Notes here');
+    expect(reloaded.href).toBe('https://example.com');
+  });
+
+  it('clears description and href when explicitly set to null', async () => {
+    const task = await db.createTask(env.DB, userId, { projectId, title: 'Task' });
+    await db.updateTask(env.DB, userId, task.id, { description: 'Notes', href: 'https://example.com' });
+    await db.updateTask(env.DB, userId, task.id, { description: null, href: null });
+
+    const [reloaded] = await db.listTasksByProject(env.DB, userId, projectId);
+    expect(reloaded.description).toBeNull();
+    expect(reloaded.href).toBeNull();
   });
 
   it('clears a stale section_id when moved to a different project without specifying sectionId', async () => {

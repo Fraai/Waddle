@@ -649,6 +649,119 @@ h2:hover > .icon-btn,
   background: var(--accent-soft);
 }
 
+/* A small, always-visible "this task has a link" indicator — unlike
+   .icon-btn's row actions, it's informational rather than hover-gated. */
+.task-href-badge {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: var(--r-sm);
+  color: var(--text-3);
+  transition: background var(--fast) var(--ease), color var(--fast) var(--ease);
+}
+
+.task-href-badge:hover {
+  background: var(--row-hover);
+  color: var(--accent);
+}
+
+.task-href-badge svg {
+  width: 0.8rem;
+  height: 0.8rem;
+}
+
+/* ==========================================================================
+   Task detail modal
+   ========================================================================== */
+
+.task-modal {
+  width: min(34rem, calc(100vw - 2rem));
+  max-height: calc(100vh - 4rem);
+  overflow: auto;
+  margin: auto;
+  padding: var(--space-5);
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-2);
+}
+
+.task-modal::backdrop {
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.task-modal-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.task-modal-head {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+
+/* Always visible, unlike a row's hover-gated .icon-btn — there's no "hover
+   the modal" gesture to reveal it on. */
+.task-modal-close {
+  opacity: 1;
+}
+
+.task-modal-delete {
+  color: var(--danger);
+}
+
+.task-modal-delete:hover {
+  background: color-mix(in oklab, var(--danger) 12%, transparent);
+}
+
+.task-modal-title {
+  flex: 1;
+  min-width: 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--text);
+  background: transparent;
+  border: none;
+  padding: var(--space-1) 0;
+}
+
+.task-modal-title:focus {
+  outline: none;
+}
+
+.task-modal-description {
+  resize: vertical;
+  min-height: 4.5rem;
+  font-family: inherit;
+}
+
+.task-modal-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.task-modal-href-open {
+  flex: none;
+}
+
+.task-modal-row .field {
+  font-size: 0.875rem;
+}
+
+.task-modal-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: var(--space-2);
+}
+
 /* ==========================================================================
    Empty states + drag
    ========================================================================== */
