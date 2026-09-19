@@ -17,8 +17,28 @@ Internal Todoist alternative for the fraai.agency team. Astro SSR on Cloudflare 
 | `JWT_SECRET` | HS256 JWT signing (min 32 chars) |
 | `AUTH_GOOGLE_ID` | Google OAuth client ID |
 | `AUTH_GOOGLE_SECRET` | Google OAuth client secret |
+| `MCP_TOKEN` | Bearer token for `/api/mcp` — optional, leave unset to disable it |
+| `MCP_USER_EMAIL` | Which existing user `MCP_TOKEN` authenticates as — optional, required if `MCP_TOKEN` is set |
 
 Local: put these in `.dev.vars` (gitignored, see `.env.example` for the variable names). Production: `npx wrangler secret put <NAME>`.
+
+## MCP server
+
+`/api/mcp` (`src/pages/api/mcp.ts`) exposes the app to any MCP client (Claude Code, Claude Desktop, Claude.ai custom connectors) as tools: `list_projects`, `list_today`, `list_upcoming`, `list_project_tasks`, `create_task`, `toggle_task_done`, `delete_task`. Built on `@modelcontextprotocol/sdk`'s `WebStandardStreamableHTTPServerTransport` in stateless mode (fresh `McpServer` per request — no session state, since every tool call re-authenticates and re-queries D1 anyway).
+
+Auth is a single Bearer token (`MCP_TOKEN`) mapped to one account (`MCP_USER_EMAIL`) — this is personal automation, not multi-tenant, so the same token in two different Claude installs just authenticates as that one person both times. Not OAuth; if this ever needs to serve multiple people with their own logins, that's the upgrade path. `MCP_USER_EMAIL` must already exist (sign in via the browser once first) — the endpoint resolves an existing user (`getUserByEmail`), it never provisions one.
+
+Client config (Claude Code / Desktop, `~/.claude.json` or the app's MCP settings):
+```json
+{
+  "mcpServers": {
+    "todo-fraai-agency": {
+      "url": "https://todo.fraai.agency/api/mcp",
+      "headers": { "Authorization": "Bearer <MCP_TOKEN>" }
+    }
+  }
+}
+```
 
 ## Google OAuth setup
 
@@ -49,6 +69,7 @@ npm run deploy    # Build and deploy to Cloudflare
 - `src/lib/dates.ts` — Today/Upcoming date-grouping (Europe/Brussels timezone)
 - `src/actions/index.ts` — all mutations (Astro Actions)
 - `src/pages/app/` — Today, Upcoming, Week, and per-project views
+- `src/pages/api/mcp.ts` — MCP server (see "MCP server" above)
 - `migrations/` — D1 schema (`0001_init.sql` base schema, `0002_unique_inbox_per_user.sql` adds the one-inbox-per-user constraint, `0003_add_task_description_href.sql` adds `tasks.description`/`tasks.href` edited via the task detail modal, `0004_add_project_type.sql` adds `projects.type` — see `src/scripts/task-edit.ts` and `src/scripts/sidebar.ts`)
 
 ## What was intentionally left out of the MVP

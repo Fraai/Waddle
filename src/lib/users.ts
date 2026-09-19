@@ -5,6 +5,16 @@ export interface User {
   created_at: string;
 }
 
+// Unlike provisionUser, never creates one — for callers (like MCP auth) that
+// must resolve an existing account, not silently make a new one from an
+// arbitrary email.
+export async function getUserByEmail(db: D1Database, email: string): Promise<User | null> {
+  const normalizedEmail = email.trim().toLowerCase();
+  const user = await db.prepare('SELECT id, email, name, created_at FROM users WHERE email = ?')
+    .bind(normalizedEmail).first<User>();
+  return user ?? null;
+}
+
 export async function provisionUser(db: D1Database, email: string, name: string | null): Promise<User> {
   const normalizedEmail = email.trim().toLowerCase();
   await db.prepare(

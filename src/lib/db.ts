@@ -170,6 +170,8 @@ export interface CreateTaskInput {
   sectionId?: number | null;
   parentTaskId?: number | null;
   title: string;
+  description?: string | null;
+  href?: string | null;
   dueDate?: string | null;
   priority?: number;
 }
@@ -211,11 +213,12 @@ export async function createTask(db: D1Database, userId: number, input: CreateTa
   const nextPosition = (row?.max ?? 0) + 1;
 
   const result = await db.prepare(
-    `INSERT INTO tasks (user_id, project_id, section_id, parent_task_id, title, due_date, priority, position)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING *`,
+    `INSERT INTO tasks (user_id, project_id, section_id, parent_task_id, title, description, href, due_date, priority, position)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING *`,
   ).bind(
     userId, input.projectId, input.sectionId ?? null, input.parentTaskId ?? null,
-    input.title, input.dueDate ?? null, input.priority ?? 4, nextPosition,
+    input.title, input.description ?? null, input.href ?? null,
+    input.dueDate ?? null, input.priority ?? 4, nextPosition,
   ).first<Task>();
   if (!result) throw new Error('Failed to create task');
   return result;
