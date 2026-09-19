@@ -3,12 +3,23 @@ import { actions } from 'astro:actions';
 const LINK_ICON =
   '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 9.5 13 3M9 3h4v4M12 9v3a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h3" /></svg>';
 
+interface ProjectOption {
+  id: number;
+  name: string;
+}
+
+// Every page already fetches the project list for the sidebar and embeds it
+// as JSON (see AppLayout.astro) — reused here instead of a fetch just to
+// populate the picker.
+const PROJECTS: ProjectOption[] = JSON.parse(document.getElementById('projects-data')?.textContent || '[]');
+
 interface Modal {
   dialog: HTMLDialogElement;
   titleInput: HTMLInputElement;
   descriptionInput: HTMLTextAreaElement;
   hrefInput: HTMLInputElement;
   hrefOpen: HTMLAnchorElement;
+  projectSelect: HTMLSelectElement;
   dueInput: HTMLInputElement;
   prioritySelect: HTMLSelectElement;
   saveBtn: HTMLButtonElement;
@@ -20,7 +31,7 @@ let modal: Modal | null = null;
 // currently open for, and what it looked like when opened, so submit can
 // diff against the original values and decide whether a reload is needed.
 let activeLi: HTMLElement | null = null;
-let baseline: { dueDate: string; priority: string } | null = null;
+let baseline: { dueDate: string; priority: string; projectId: string } | null = null;
 
 function buildModal(): Modal {
   const dialog = document.createElement('dialog');
@@ -61,6 +72,15 @@ function buildModal(): Modal {
   hrefOpen.textContent = 'Open ↗';
   hrefRow.append(hrefInput, hrefOpen);
 
+  const projectSelect = document.createElement('select');
+  projectSelect.className = 'field task-modal-project';
+  for (const project of PROJECTS) {
+    const opt = document.createElement('option');
+    opt.value = String(project.id);
+    opt.textContent = project.name;
+    projectSelect.append(opt);
+  }
+
   const metaRow = document.createElement('div');
   metaRow.className = 'task-modal-row';
   const dueInput = document.createElement('input');
@@ -95,7 +115,7 @@ function buildModal(): Modal {
   actionsRight.append(cancelBtn, saveBtn);
   actionsRow.append(deleteBtn, actionsRight);
 
-  form.append(head, descriptionInput, hrefRow, metaRow, actionsRow);
+  form.append(head, descriptionInput, projectSelect, hrefRow, metaRow, actionsRow);
   dialog.append(form);
   document.body.append(dialog);
 
@@ -136,6 +156,9 @@ function buildModal(): Modal {
 
     const dueChanged = dueInput.value !== baseline.dueDate;
     const priorityChanged = prioritySelect.value !== baseline.priority;
+    // Hidden for a subtask (see openTaskModal) — baseline.projectId is '' in
+    // that case, which would otherwise never match any real option value.
+    const projectChanged = !projectSelect.hidden && projectSelect.value !== baseline.projectId;
 
     const { error } = await actions.updateTask({
       taskId: Number(li.dataset.taskId),
@@ -144,6 +167,7 @@ function buildModal(): Modal {
       href: hrefInput.value || null,
       dueDate: dueInput.value || null,
       priority: Number(prioritySelect.value),
+      ...(projectChanged ? { projectId: Number(projectSelect.value) } : {}),
     });
 
     if (error) {
@@ -153,10 +177,12 @@ function buildModal(): Modal {
       return;
     }
 
-    // A due-date or priority change can move the task into a different day
-    // group or section order — reload to stay correct. Title/description/
-    // link never affect grouping, so those update in place.
-    if (dueChanged || priorityChanged) {
+    // A due-date, priority, or project change can move the task into a
+    // different day group, section order, or off the page entirely (if
+    // it's no longer this project's) — reload to stay correct.
+    // Title/description/link never affect any of that, so those update in
+    // place.
+    if (dueChanged || priorityChanged || projectChanged) {
       location.reload();
       return;
     }
@@ -170,7 +196,10 @@ function buildModal(): Modal {
     dialog.close();
   });
 
-  return { dialog, titleInput, descriptionInput, hrefInput, hrefOpen, dueInput, prioritySelect, saveBtn, deleteBtn };
+  return {
+    dialog, titleInput, descriptionInput, hrefInput, hrefOpen, projectSelect, dueInput, prioritySelect,
+    saveBtn, deleteBtn,
+  };
 }
 
 function ensureModal(): Modal {
@@ -211,21 +240,28 @@ function openTaskModal(li: HTMLElement): void {
   activeLi = li;
   const dueDate = li.dataset.dueDate || '';
   const priority = li.dataset.priority || '4';
-  baseline = { dueDate, priority };
+  const projectId = li.dataset.projectId || '';
+  baseline = { dueDate, priority, projectId };
 
   m.titleInput.value = titleEl.textContent ?? '';
   m.descriptionInput.value = li.dataset.description || '';
   m.hrefInput.value = li.dataset.href || '';
   m.hrefOpen.hidden = !m.hrefInput.value;
   m.hrefOpen.href = m.hrefInput.value;
+  m.projectSelect.value = projectId;
   m.dueInput.value = dueDate;
   m.prioritySelect.value = priority;
   m.saveBtn.disabled = false;
   m.deleteBtn.disabled = false;
   // Subtasks have no delete button on the row (they can't be deleted from
   // the UI at all today) — hide the modal's delete to match, rather than
-  // offering an action that has nothing to wire up to.
-  m.deleteBtn.hidden = !li.querySelector('.task-delete');
+  // offering an action that has nothing to wire up to. A subtask also
+  // always belongs to its parent's project, so moving it independently
+  // would leave it inconsistent with the parent — hide the picker rather
+  // than letting that happen.
+  const isSubtask = !li.querySelector('.task-delete');
+  m.deleteBtn.hidden = isSubtask;
+  m.projectSelect.hidden = isSubtask;
 
   m.dialog.showModal();
   m.titleInput.focus();

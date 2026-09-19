@@ -73,6 +73,7 @@ const openCount = topLevel.filter((t) => t.done_at === null).length;
               data-due-date={task.due_date ?? ''}
               data-description={task.description ?? ''}
               data-href={task.href ?? ''}
+              data-project-id={projectId}
               class="task-row"
             >
               <div class="task-main">

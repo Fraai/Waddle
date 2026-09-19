@@ -259,7 +259,7 @@ export async function updateTask(
     sectionId = section ? task.section_id : null;
   }
 
-  await db.prepare(
+  const updateThis = db.prepare(
     `UPDATE tasks SET title = ?, description = ?, href = ?, due_date = ?, priority = ?, project_id = ?, section_id = ?, updated_at = datetime('now')
      WHERE id = ? AND user_id = ?`,
   ).bind(
@@ -271,7 +271,23 @@ export async function updateTask(
     projectId,
     sectionId,
     taskId, userId,
-  ).run();
+  );
+
+  if (!projectChanged) {
+    await updateThis.run();
+    return;
+  }
+
+  // Subtasks always belong to their parent's project (enforced when they're
+  // created) — moving the parent without them would leave them pointing at
+  // a project their own parent no longer lives in. They're never sectioned
+  // (the "Add subtask" form has no section picker), so no section_id to fix
+  // up on their end.
+  const moveChildren = db.prepare(
+    `UPDATE tasks SET project_id = ?, updated_at = datetime('now') WHERE parent_task_id = ? AND user_id = ?`,
+  ).bind(projectId, taskId, userId);
+
+  await db.batch([updateThis, moveChildren]);
 }
 
 export async function toggleTaskDone(db: D1Database, userId: number, taskId: number): Promise<void> {

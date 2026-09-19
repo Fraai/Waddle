@@ -225,6 +225,11 @@ const projectHue = (id: number) => (id * 137.5) % 360;
     <main class="min-w-0 flex-1 px-4 pb-12 md:px-8">
       <slot />
     </main>
+
+    <!-- Read by task-edit.ts to populate the detail modal's project picker —
+         every page already fetches this list for the sidebar, so no extra
+         request just to move a task between projects. -->
+    <script type="application/json" id="projects-data" set:html={JSON.stringify(projects.map((p) => ({ id: p.id, name: p.name })))} />
   </body>
 </html>
 <script src="../scripts/sidebar.ts"></script>

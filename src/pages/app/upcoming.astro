@@ -39,6 +39,7 @@ const groups = groupUpcoming(tasks, today);
               data-description={task.description ?? ''}
               data-href={task.href ?? ''}
               data-project-type={projectsById.get(task.project_id)?.type}
+              data-project-id={task.project_id}
               class="task-row"
             >
               <div class="task-main">

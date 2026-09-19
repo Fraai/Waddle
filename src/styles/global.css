@@ -810,6 +810,10 @@ h2:hover > .icon-btn,
   font-family: inherit;
 }
 
+.task-modal-project {
+  width: 100%;
+}
+
 .task-modal-row {
   display: flex;
   align-items: center;

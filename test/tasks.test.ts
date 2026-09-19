@@ -157,6 +157,18 @@ describe('updateTask', () => {
     await expect(db.updateTask(env.DB, userId, theirTask.id, { title: 'Hijacked' })).rejects.toBeInstanceOf(db.NotFoundError);
   });
 
+  it('moves subtasks along with a parent that changes project', async () => {
+    const parent = await db.createTask(env.DB, userId, { projectId, title: 'Parent' });
+    const child = await db.createTask(env.DB, userId, { projectId, parentTaskId: parent.id, title: 'Child' });
+    const otherProject = await db.createProject(env.DB, userId, 'Other');
+
+    await db.updateTask(env.DB, userId, parent.id, { projectId: otherProject.id });
+
+    const tasks = await db.listTasksByProject(env.DB, userId, otherProject.id);
+    const movedChild = tasks.find((t) => t.id === child.id);
+    expect(movedChild?.project_id).toBe(otherProject.id);
+  });
+
   it('sets description and href, leaving them alone on a later update that omits them', async () => {
     const task = await db.createTask(env.DB, userId, { projectId, title: 'Task' });
     await db.updateTask(env.DB, userId, task.id, { description: 'Notes here', href: 'https://example.com' });

@@ -17,6 +17,7 @@ interface CreatedTask {
   title: string;
   due_date: string | null;
   priority: number;
+  project_id: number;
 }
 
 /** Builds a top-level task row identical to the server-rendered markup.
@@ -36,6 +37,7 @@ function buildTaskRow(
   li.dataset.taskId = String(task.id);
   li.dataset.priority = String(task.priority);
   li.dataset.dueDate = task.due_date ?? '';
+  li.dataset.projectId = String(task.project_id);
   if (opts.projectType) li.dataset.projectType = opts.projectType;
   li.className = 'task-row';
 
@@ -134,6 +136,7 @@ function buildSubtaskRow(task: CreatedTask): HTMLLIElement {
   li.append(main);
 
   attachTaskToggle(checkbox);
+  attachTaskEdit(title);
   return li;
 }
 
