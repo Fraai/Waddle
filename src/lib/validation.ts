@@ -19,8 +19,11 @@ export const dateString = z.preprocess(
   z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/, 'Must be a valid date (YYYY-MM-DD)').optional(),
 );
 
+export const projectType = z.enum(['private', 'work']);
+
 export const createProjectSchema = z.object({
   name: requiredText('Name is required'),
+  type: projectType.optional(),
 });
 export const renameProjectSchema = z.object({
   projectId: idParam,
@@ -28,6 +31,7 @@ export const renameProjectSchema = z.object({
 });
 export const deleteProjectSchema = z.object({ projectId: idParam });
 export const reorderProjectsSchema = z.object({ orderedIds: z.array(idParam).min(1) });
+export const setProjectTypeSchema = z.object({ projectId: idParam, type: projectType });
 
 export const createSectionSchema = z.object({
   projectId: idParam,

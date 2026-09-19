@@ -37,6 +37,10 @@ const projectHue = (id: number) => (id * 137.5) % 360;
         if (localStorage.getItem('sidebarCollapsed') === 'true') {
           document.documentElement.dataset.sidebarCollapsed = 'true';
         }
+        const savedFilter = localStorage.getItem('taskFilter');
+        if (savedFilter === 'work' || savedFilter === 'private') {
+          document.documentElement.dataset.taskFilter = savedFilter;
+        }
       } catch {}
     </script>
   </head>
@@ -92,6 +96,12 @@ const projectHue = (id: number) => (id * 137.5) % 360;
         </button>
       </div>
 
+      <div class="filter-toggle mb-3" role="group" aria-label="Filter by project type">
+        <button type="button" class="filter-toggle-btn" data-filter="all" aria-pressed="true">All</button>
+        <button type="button" class="filter-toggle-btn" data-filter="work" aria-pressed="false">Work</button>
+        <button type="button" class="filter-toggle-btn" data-filter="private" aria-pressed="false">Private</button>
+      </div>
+
       <a href="/app/today" class="nav-item" data-astro-prefetch aria-current={isActive('/app/today') ? 'page' : undefined}>
         <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round">
           <circle cx="8" cy="8" r="5.25" />
@@ -117,24 +127,46 @@ const projectHue = (id: number) => (id * 137.5) % 360;
       </a>
 
       {inbox && (
-        <a
-          href={`/app/projects/${inbox.id}`}
-          class="nav-item"
-          data-astro-prefetch
-          aria-current={isActive(`/app/projects/${inbox.id}`) ? 'page' : undefined}
-        >
-          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round">
-            <path d="M2.2 9.2 4 3.4h8l1.8 5.8v3a1 1 0 0 1-1 1H3.2a1 1 0 0 1-1-1z" />
-            <path d="M2.2 9.2h3.2l.8 1.6h3.6l.8-1.6h3.2" />
-          </svg>
-          Inbox
-        </a>
+        <div data-project-id={inbox.id} data-project-type={inbox.type} class="flex items-center gap-1">
+          <a
+            href={`/app/projects/${inbox.id}`}
+            class="nav-item flex-1 min-w-0"
+            data-astro-prefetch
+            aria-current={isActive(`/app/projects/${inbox.id}`) ? 'page' : undefined}
+          >
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round">
+              <path d="M2.2 9.2 4 3.4h8l1.8 5.8v3a1 1 0 0 1-1 1H3.2a1 1 0 0 1-1-1z" />
+              <path d="M2.2 9.2h3.2l.8 1.6h3.6l.8-1.6h3.2" />
+            </svg>
+            Inbox
+          </a>
+          <button
+            type="button"
+            class="project-type-badge"
+            data-project-id={inbox.id}
+            data-type={inbox.type}
+            title={inbox.type === 'private' ? 'Private — click to mark as Work' : 'Work — click to mark as Private'}
+          >
+            {inbox.type === 'private' ? (
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3.5" y="7" width="9" height="6" rx="1.3" />
+                <path d="M5.3 7V5.2a2.7 2.7 0 0 1 5.4 0V7" />
+              </svg>
+            ) : (
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="2" y="5.3" width="12" height="7.5" rx="1.3" />
+                <path d="M6 5.3V4.3a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v1M2 9h12" />
+              </svg>
+            )}
+            <span class="sr-only">Toggle private/work</span>
+          </button>
+        </div>
       )}
 
       <div class="label-caps mt-4 mb-2 px-2">Projects</div>
       <ul id="project-list" class="flex flex-col gap-1">
         {otherProjects.map((project) => (
-          <li data-project-id={project.id} class="flex items-center gap-1">
+          <li data-project-id={project.id} data-project-type={project.type} class="flex items-center gap-1">
             <a
               href={`/app/projects/${project.id}`}
               class="nav-item flex-1 min-w-0"
@@ -144,6 +176,26 @@ const projectHue = (id: number) => (id * 137.5) % 360;
               <span class="project-dot" style={`--dot: hsl(${projectHue(project.id)} 62% 52%)`}></span>
               <span class="truncate min-w-0">{project.name}</span>
             </a>
+            <button
+              type="button"
+              class="project-type-badge"
+              data-project-id={project.id}
+              data-type={project.type}
+              title={project.type === 'private' ? 'Private — click to mark as Work' : 'Work — click to mark as Private'}
+            >
+              {project.type === 'private' ? (
+                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="3.5" y="7" width="9" height="6" rx="1.3" />
+                  <path d="M5.3 7V5.2a2.7 2.7 0 0 1 5.4 0V7" />
+                </svg>
+              ) : (
+                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="2" y="5.3" width="12" height="7.5" rx="1.3" />
+                  <path d="M6 5.3V4.3a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v1M2 9h12" />
+                </svg>
+              )}
+              <span class="sr-only">Toggle private/work</span>
+            </button>
             <button class="project-rename icon-btn" data-project-id={project.id} title={`Rename ${project.name}`}>
               <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M11.3 2.7a1.2 1.2 0 0 1 1.7 1.7L5.6 12l-2.4.7.7-2.4z" />

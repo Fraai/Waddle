@@ -2,7 +2,7 @@ import { defineAction, ActionError } from 'astro:actions';
 import { env } from 'cloudflare:workers';
 import * as db from '../lib/db';
 import {
-  createProjectSchema, renameProjectSchema, deleteProjectSchema, reorderProjectsSchema,
+  createProjectSchema, renameProjectSchema, deleteProjectSchema, reorderProjectsSchema, setProjectTypeSchema,
   createSectionSchema, renameSectionSchema, deleteSectionSchema, reorderSectionsSchema,
   createTaskSchema, updateTaskSchema, toggleTaskDoneSchema, deleteTaskSchema, reorderTasksSchema,
 } from '../lib/validation';
@@ -29,7 +29,15 @@ export const server = {
     input: createProjectSchema,
     handler: async (input, context) => {
       const user = requireUser(context);
-      return db.createProject(env.DB, user.id, input.name);
+      return db.createProject(env.DB, user.id, input.name, input.type);
+    },
+  }),
+  setProjectType: defineAction({
+    input: setProjectTypeSchema,
+    handler: async (input, context) => {
+      const user = requireUser(context);
+      await wrapNotFound(() => db.setProjectType(env.DB, user.id, input.projectId, input.type));
+      return { success: true };
     },
   }),
   renameProject: defineAction({

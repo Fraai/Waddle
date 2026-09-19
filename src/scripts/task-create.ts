@@ -29,12 +29,14 @@ function buildTaskRow(
     today: string;
     subtaskAddProjectId?: number;
     projectDot?: { projectId: number; name: string };
+    projectType?: string;
   },
 ): HTMLLIElement {
   const li = document.createElement('li');
   li.dataset.taskId = String(task.id);
   li.dataset.priority = String(task.priority);
   li.dataset.dueDate = task.due_date ?? '';
+  if (opts.projectType) li.dataset.projectType = opts.projectType;
   li.className = 'task-row';
 
   const main = document.createElement('div');
@@ -168,6 +170,7 @@ function resetTitle(form: HTMLFormElement): void {
 
 /** Today's "Due today" composer — always lands, undated pill, in that one list. */
 function attachTodayComposer(form: HTMLFormElement): void {
+  const projectType = form.dataset.projectType;
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     const task = await submitCreateTask(form);
@@ -181,7 +184,7 @@ function attachTodayComposer(form: HTMLFormElement): void {
       list.dataset.removeDone = '';
       section.querySelector('.empty')?.replaceWith(list);
     }
-    list?.append(buildTaskRow(task, { showPill: false, today: '' }));
+    list?.append(buildTaskRow(task, { showPill: false, today: '', projectType }));
     resetTitle(form);
   });
 }
@@ -228,6 +231,7 @@ function attachSubtaskComposer(form: HTMLFormElement): void {
 function attachUpcomingComposer(form: HTMLFormElement): void {
   const dueInput = form.querySelector<HTMLInputElement>('input[type="date"]');
   const today = dueInput?.min ?? '';
+  const projectType = form.dataset.projectType;
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -261,7 +265,7 @@ function attachUpcomingComposer(form: HTMLFormElement): void {
       container.insertBefore(section, next ?? form);
     }
 
-    section.querySelector<HTMLUListElement>('ul.task-list')?.append(buildTaskRow(task, { showPill: false, today: '' }));
+    section.querySelector<HTMLUListElement>('ul.task-list')?.append(buildTaskRow(task, { showPill: false, today: '', projectType }));
 
     const count = container.querySelectorAll('section[data-date]').length;
     const countEl = container.querySelector<HTMLElement>('.page-head p');
@@ -277,6 +281,7 @@ function attachUpcomingComposer(form: HTMLFormElement): void {
 function attachWeekComposer(form: HTMLFormElement): void {
   const projectIdInput = form.querySelector<HTMLInputElement>('input[name="projectId"]');
   const projectId = Number(projectIdInput?.value);
+  const projectType = form.dataset.projectType;
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -286,7 +291,7 @@ function attachWeekComposer(form: HTMLFormElement): void {
     const section = form.closest('section');
     const list = section?.querySelector<HTMLUListElement>('ul.task-list');
     list?.append(
-      buildTaskRow(task, { showPill: false, today: '', projectDot: { projectId, name: 'Inbox' } }),
+      buildTaskRow(task, { showPill: false, today: '', projectDot: { projectId, name: 'Inbox' }, projectType }),
     );
     resetTitle(form);
   });

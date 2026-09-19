@@ -8,6 +8,7 @@ Internal Todoist alternative for the fraai.agency team. Astro SSR on Cloudflare 
 - **Google SSO** — `@fraai.agency` accounts only. Non-allowed domains are rejected at `/api/auth/callback` with a redirect to `/auth/error?reason=domain`.
 - **Personal, per-user data** — every user has their own projects/sections/tasks. No sharing, no assignment, no cross-user visibility. Every user gets an auto-created, un-renameable, un-deletable "Inbox" project on first login.
 - **Responsive down to phone width** — sidebar collapses into a hamburger-triggered drawer below 768px (CSS-only, via a `peer`-checked checkbox in `AppLayout.astro`; no JS). At 768px+, the sidebar can also be manually collapsed (⌘B, or the toggle buttons) — a separate, JS/localStorage-backed preference (`sidebar.ts` + the `data-sidebar-collapsed` attribute set on `<html>`), independent of the mobile drawer. English UI, due dates only (no time-of-day), no recurring tasks, no labels.
+- **Every project is "private" or "work"** (`projects.type`, defaults to `work`) — toggled via the badge next to a project's name in the sidebar, including the Inbox. A sidebar segmented control (All/Work/Private) filters everything by it: Today, Upcoming, and Week hide non-matching tasks, and the sidebar hides non-matching projects. Also a JS/localStorage preference (`data-task-filter` on `<html>`), same mechanism as the sidebar collapse. Project pages are *not* filtered — visiting one directly always shows its own tasks regardless of the ambient filter.
 
 ## Required secrets
 
@@ -27,7 +28,7 @@ In Google Cloud Console, create an OAuth 2.0 Web Application credential with the
 
 ## DB binding
 
-`DB` — Cloudflare D1, bound in `wrangler.toml`. Apply migrations: `npm run db:migrate:local` (add `:remote` for production). `wrangler.toml`'s `database_id` is still the placeholder `00000000-...` — replace it with a real id from `wrangler d1 create todo-fraai-agency` before `npm run deploy` will work.
+`DB` — Cloudflare D1, bound in `wrangler.toml`. Apply migrations: `npm run db:migrate:local` (add `:remote` for production — remember to run this against production *before* deploying a migration that ships new code depending on it). `wrangler.toml`'s `database_id` points at the real, already-created `todo-fraai-agency` database.
 
 ## Dev commands
 
@@ -47,8 +48,8 @@ npm run deploy    # Build and deploy to Cloudflare
 - `src/lib/db.ts` — all project/section/task queries, scoped to the acting user
 - `src/lib/dates.ts` — Today/Upcoming date-grouping (Europe/Brussels timezone)
 - `src/actions/index.ts` — all mutations (Astro Actions)
-- `src/pages/app/` — Today, Upcoming, and per-project views
-- `migrations/` — D1 schema (`0001_init.sql` base schema, `0002_unique_inbox_per_user.sql` adds the one-inbox-per-user constraint, `0003_add_task_description_href.sql` adds `tasks.description`/`tasks.href`, edited via the task detail modal — see `src/scripts/task-edit.ts`)
+- `src/pages/app/` — Today, Upcoming, Week, and per-project views
+- `migrations/` — D1 schema (`0001_init.sql` base schema, `0002_unique_inbox_per_user.sql` adds the one-inbox-per-user constraint, `0003_add_task_description_href.sql` adds `tasks.description`/`tasks.href` edited via the task detail modal, `0004_add_project_type.sql` adds `projects.type` — see `src/scripts/task-edit.ts` and `src/scripts/sidebar.ts`)
 
 ## What was intentionally left out of the MVP
 

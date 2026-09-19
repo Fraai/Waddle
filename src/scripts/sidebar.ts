@@ -6,6 +6,10 @@ const DELETE_ICON =
   '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M4 4l8 8M12 4l-8 8" /></svg><span class="sr-only">Delete project</span>';
 const RENAME_ICON =
   '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M11.3 2.7a1.2 1.2 0 0 1 1.7 1.7L5.6 12l-2.4.7.7-2.4z" /></svg><span class="sr-only">Rename project</span>';
+const LOCK_ICON =
+  '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="7" width="9" height="6" rx="1.3" /><path d="M5.3 7V5.2a2.7 2.7 0 0 1 5.4 0V7" /></svg><span class="sr-only">Toggle private/work</span>';
+const BRIEFCASE_ICON =
+  '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5.3" width="12" height="7.5" rx="1.3" /><path d="M6 5.3V4.3a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v1M2 9h12" /></svg><span class="sr-only">Toggle private/work</span>';
 
 // Same spacing as the server's projectHue() in AppLayout.astro — golden-angle
 // hue steps give every project a distinct, stable colour without storing one.
@@ -56,6 +60,61 @@ document.addEventListener('keydown', (e) => {
     setSidebarCollapsed(!collapsed, collapsed ? collapseBtn : expandBtn);
   }
 });
+
+// Private/work filter — a per-browser preference (see the inline <script>
+// in AppLayout.astro's <head>, which applies a stored value before paint).
+// Filtering itself is pure CSS keyed off data-task-filter; this just keeps
+// the three buttons' pressed state in sync and persists a click.
+const filterButtons = document.querySelectorAll<HTMLButtonElement>('.filter-toggle-btn');
+
+function applyTaskFilterButtons(filter: string): void {
+  filterButtons.forEach((btn) => {
+    btn.setAttribute('aria-pressed', String(btn.dataset.filter === filter));
+  });
+}
+
+function setTaskFilter(filter: 'all' | 'work' | 'private'): void {
+  if (filter === 'all') delete document.documentElement.dataset.taskFilter;
+  else document.documentElement.dataset.taskFilter = filter;
+  applyTaskFilterButtons(filter);
+  try {
+    localStorage.setItem('taskFilter', filter);
+  } catch {}
+}
+
+applyTaskFilterButtons(document.documentElement.dataset.taskFilter ?? 'all');
+filterButtons.forEach((btn) => {
+  btn.addEventListener('click', () => setTaskFilter(btn.dataset.filter as 'all' | 'work' | 'private'));
+});
+
+// A project's private/work badge — always visible (unlike rename/delete),
+// since the point is to see it at a glance, and clicking it just flips the
+// type in place. Works for both a project <li> and the Inbox's own row,
+// which both carry data-project-id on their own container.
+function attachProjectTypeBadge(button: HTMLButtonElement): void {
+  button.addEventListener('click', async () => {
+    const projectId = Number(button.dataset.projectId);
+    const current = button.dataset.type === 'private' ? 'private' : 'work';
+    const next = current === 'private' ? 'work' : 'private';
+    const row = button.closest<HTMLElement>('[data-project-id]');
+
+    const apply = (type: 'private' | 'work') => {
+      button.dataset.type = type;
+      button.innerHTML = type === 'private' ? LOCK_ICON : BRIEFCASE_ICON;
+      button.title = type === 'private' ? 'Private — click to mark as Work' : 'Work — click to mark as Private';
+      if (row) row.dataset.projectType = type;
+    };
+
+    apply(next);
+    const { error } = await actions.setProjectType({ projectId, type: next });
+    if (error) {
+      apply(current);
+      alert(error.message);
+    }
+  });
+}
+
+document.querySelectorAll<HTMLButtonElement>('.project-type-badge').forEach(attachProjectTypeBadge);
 
 const list = document.getElementById('project-list');
 if (list) {
@@ -149,6 +208,7 @@ newProjectForm?.addEventListener('submit', async (e) => {
 
   const li = document.createElement('li');
   li.dataset.projectId = String(project.id);
+  li.dataset.projectType = project.type;
   li.className = 'flex items-center gap-1';
 
   const link = document.createElement('a');
@@ -166,6 +226,14 @@ newProjectForm?.addEventListener('submit', async (e) => {
 
   link.append(dot, name);
 
+  const typeBadge = document.createElement('button');
+  typeBadge.type = 'button';
+  typeBadge.className = 'project-type-badge';
+  typeBadge.dataset.projectId = String(project.id);
+  typeBadge.dataset.type = project.type;
+  typeBadge.title = project.type === 'private' ? 'Private — click to mark as Work' : 'Work — click to mark as Private';
+  typeBadge.innerHTML = project.type === 'private' ? LOCK_ICON : BRIEFCASE_ICON;
+
   const renameBtn = document.createElement('button');
   renameBtn.className = 'project-rename icon-btn';
   renameBtn.dataset.projectId = String(project.id);
@@ -178,8 +246,9 @@ newProjectForm?.addEventListener('submit', async (e) => {
   deleteBtn.title = `Delete ${project.name}`;
   deleteBtn.innerHTML = DELETE_ICON;
 
-  li.append(link, renameBtn, deleteBtn);
+  li.append(link, typeBadge, renameBtn, deleteBtn);
   list.append(li);
+  attachProjectTypeBadge(typeBadge);
   attachProjectRename(renameBtn);
   attachProjectDelete(deleteBtn);
 

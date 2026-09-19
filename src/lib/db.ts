@@ -5,6 +5,7 @@ export interface Project {
   user_id: number;
   name: string;
   color: string | null;
+  type: 'private' | 'work';
   is_inbox: number;
   position: number;
   created_at: string;
@@ -23,13 +24,15 @@ export async function listProjects(db: D1Database, userId: number): Promise<Proj
   return results;
 }
 
-export async function createProject(db: D1Database, userId: number, name: string): Promise<Project> {
+export async function createProject(
+  db: D1Database, userId: number, name: string, type: 'private' | 'work' = 'work',
+): Promise<Project> {
   const row = await db.prepare('SELECT COALESCE(MAX(position), 0) AS max FROM projects WHERE user_id = ?')
     .bind(userId).first<{ max: number }>();
   const nextPosition = (row?.max ?? 0) + 1;
   const result = await db.prepare(
-    'INSERT INTO projects (user_id, name, position) VALUES (?, ?, ?) RETURNING *',
-  ).bind(userId, name, nextPosition).first<Project>();
+    'INSERT INTO projects (user_id, name, type, position) VALUES (?, ?, ?, ?) RETURNING *',
+  ).bind(userId, name, type, nextPosition).first<Project>();
   if (!result) throw new Error('Failed to create project');
   return result;
 }
@@ -38,6 +41,17 @@ export async function renameProject(db: D1Database, userId: number, projectId: n
   const { meta } = await db.prepare(
     'UPDATE projects SET name = ? WHERE id = ? AND user_id = ? AND is_inbox = 0',
   ).bind(name, projectId, userId).run();
+  if (meta.changes === 0) throw new NotFoundError('Project not found');
+}
+
+// Unlike rename/delete, the Inbox can change type — it's not exempt from
+// the private/work split just because it's un-renameable.
+export async function setProjectType(
+  db: D1Database, userId: number, projectId: number, type: 'private' | 'work',
+): Promise<void> {
+  const { meta } = await db.prepare(
+    'UPDATE projects SET type = ? WHERE id = ? AND user_id = ?',
+  ).bind(type, projectId, userId).run();
   if (meta.changes === 0) throw new NotFoundError('Project not found');
 }
 

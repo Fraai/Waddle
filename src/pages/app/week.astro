@@ -43,6 +43,7 @@ const days = groupWeek(tasks, weekDates);
               data-due-date={task.due_date}
               data-description={task.description ?? ''}
               data-href={task.href ?? ''}
+              data-project-type={projectsById.get(task.project_id)?.type}
               class="task-row"
             >
               <div class="task-main">
@@ -78,7 +79,7 @@ const days = groupWeek(tasks, weekDates);
         </ul>
 
         {inbox && (
-          <form method="POST" action={actions.createTask} class="composer mt-2" data-kind="week" data-date={day.date}>
+          <form method="POST" action={actions.createTask} class="composer mt-2" data-kind="week" data-date={day.date} data-project-type={inbox.type}>
             <input type="hidden" name="projectId" value={inbox.id} />
             <input type="hidden" name="dueDate" value={day.date} />
             <input name="title" placeholder="Add task" aria-label="Task title" required />

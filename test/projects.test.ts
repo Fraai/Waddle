@@ -1,6 +1,32 @@
 import { describe, expect, it, beforeEach } from 'vitest';
 import { env } from 'cloudflare:test';
 import * as db from '../src/lib/db';
+import { createProjectSchema, setProjectTypeSchema } from '../src/lib/validation';
+
+describe('createProjectSchema', () => {
+  it('makes type optional', () => {
+    const result = createProjectSchema.safeParse({ name: 'A project' });
+    expect(result.success).toBe(true);
+    expect(result.data?.type).toBeUndefined();
+  });
+
+  it('accepts "private" or "work"', () => {
+    expect(createProjectSchema.safeParse({ name: 'A', type: 'private' }).success).toBe(true);
+    expect(createProjectSchema.safeParse({ name: 'A', type: 'work' }).success).toBe(true);
+  });
+
+  it('rejects anything else', () => {
+    expect(createProjectSchema.safeParse({ name: 'A', type: 'personal' }).success).toBe(false);
+  });
+});
+
+describe('setProjectTypeSchema', () => {
+  it('requires both projectId and type', () => {
+    expect(setProjectTypeSchema.safeParse({ projectId: '1' }).success).toBe(false);
+    expect(setProjectTypeSchema.safeParse({ type: 'private' }).success).toBe(false);
+    expect(setProjectTypeSchema.safeParse({ projectId: '1', type: 'private' }).success).toBe(true);
+  });
+});
 
 let userId: number;
 let otherUserId: number;
@@ -28,6 +54,39 @@ describe('createProject / listProjects', () => {
     await db.createProject(env.DB, otherUserId, 'Not mine');
     const projects = await db.listProjects(env.DB, userId);
     expect(projects).toEqual([]);
+  });
+
+  it('defaults to type "work" when none is given', async () => {
+    const project = await db.createProject(env.DB, userId, 'Untyped');
+    expect(project.type).toBe('work');
+  });
+
+  it('accepts an explicit type', async () => {
+    const project = await db.createProject(env.DB, userId, 'Personal errands', 'private');
+    expect(project.type).toBe('private');
+  });
+});
+
+describe('setProjectType', () => {
+  it('changes a project\'s type', async () => {
+    const project = await db.createProject(env.DB, userId, 'Side project');
+    await db.setProjectType(env.DB, userId, project.id, 'private');
+    const [reloaded] = await db.listProjects(env.DB, userId);
+    expect(reloaded.type).toBe('private');
+  });
+
+  it('unlike renameProject, allows changing the inbox\'s type', async () => {
+    await env.DB.prepare('INSERT INTO projects (user_id, name, is_inbox) VALUES (?, ?, 1)').bind(userId, 'Inbox').run();
+    const inbox = await env.DB.prepare('SELECT id FROM projects WHERE user_id = ? AND is_inbox = 1')
+      .bind(userId).first<{ id: number }>();
+    await db.setProjectType(env.DB, userId, inbox!.id, 'private');
+    const [reloaded] = await db.listProjects(env.DB, userId);
+    expect(reloaded.type).toBe('private');
+  });
+
+  it('throws NotFoundError for a project owned by someone else', async () => {
+    const theirs = await db.createProject(env.DB, otherUserId, 'Theirs');
+    await expect(db.setProjectType(env.DB, userId, theirs.id, 'private')).rejects.toBeInstanceOf(db.NotFoundError);
   });
 });
 

@@ -12,6 +12,7 @@ const [tasks, projects] = await Promise.all([
   listProjects(env.DB, user.id),
 ]);
 const inbox = projects.find((p) => p.is_inbox === 1);
+const projectsById = new Map(projects.map((p) => [p.id, p]));
 const today = todayISO();
 const { overdue, today: dueToday } = splitOverdueAndToday(tasks, today);
 ---
@@ -33,6 +34,7 @@ const { overdue, today: dueToday } = splitOverdueAndToday(tasks, today);
               data-due-date={task.due_date}
               data-description={task.description ?? ''}
               data-href={task.href ?? ''}
+              data-project-type={projectsById.get(task.project_id)?.type}
               class="task-row"
             >
               <div class="task-main">
@@ -78,6 +80,7 @@ const { overdue, today: dueToday } = splitOverdueAndToday(tasks, today);
               data-due-date={task.due_date}
               data-description={task.description ?? ''}
               data-href={task.href ?? ''}
+              data-project-type={projectsById.get(task.project_id)?.type}
               class="task-row"
             >
               <div class="task-main">
@@ -109,7 +112,7 @@ const { overdue, today: dueToday } = splitOverdueAndToday(tasks, today);
       )}
 
       {inbox && (
-        <form method="POST" action={actions.createTask} class="composer mt-2" data-kind="today">
+        <form method="POST" action={actions.createTask} class="composer mt-2" data-kind="today" data-project-type={inbox.type}>
           <input type="hidden" name="projectId" value={inbox.id} />
           <input type="hidden" name="dueDate" value={today} />
           <input name="title" placeholder="Add task, due today" aria-label="Task title" required />
