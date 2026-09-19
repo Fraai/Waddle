@@ -55,6 +55,10 @@ function projectView(project: db.Project) {
   return { id: project.id, name: project.name, type: project.type, isInbox: project.is_inbox === 1 };
 }
 
+function sectionView(section: db.Section) {
+  return { id: section.id, projectId: section.project_id, name: section.name };
+}
+
 /** Resolves a project by id or (case-insensitive) name; omitted means Inbox. */
 async function resolveProject(userId: number, ref: string | undefined): Promise<db.Project | null> {
   const projects = await db.listProjects(env.DB, userId);
@@ -136,6 +140,24 @@ function buildServer(user: User): McpServer {
     async ({ name, type }) => {
       const project = await db.createProject(env.DB, user.id, name, type);
       return toolResult(projectView(project));
+    },
+  );
+
+  server.registerTool(
+    'create_section',
+    {
+      title: 'Create a section',
+      description: 'Creates a section inside a project, matched by id or name (e.g. "Inbox") — tasks can then be filed into it from the app.',
+      inputSchema: {
+        project: z.string().describe('Project id or name'),
+        name: z.string().min(1).describe('Section name'),
+      },
+    },
+    async ({ project, name }) => {
+      const resolved = await resolveProject(user.id, project);
+      if (!resolved) return toolError(`No project matches "${project}".`);
+      const section = await db.createSection(env.DB, user.id, resolved.id, name);
+      return toolResult(sectionView(section));
     },
   );
 
