@@ -339,6 +339,37 @@ body {
 }
 
 /* ==========================================================================
+   Week — 7 columns of the reused .task-list/.task-row/.composer pattern.
+   Columns clamp to a 200px minimum and the grid scrolls horizontally past
+   that, so it degrades to one scrollable row on a phone without a separate
+   breakpoint.
+   ========================================================================== */
+
+.week-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(200px, 1fr));
+  gap: var(--space-4);
+  padding-bottom: var(--space-4);
+  overflow-x: auto;
+}
+
+.week-day {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+/* A day with nothing due still needs to be a visible drop target — the
+   general .task-list:empty rule would otherwise collapse it to nothing. */
+.week-day .task-list:empty {
+  display: block;
+  min-height: 2.75rem;
+  border: 1px dashed var(--hairline);
+  background: transparent;
+  box-shadow: none;
+}
+
+/* ==========================================================================
    Checkbox — priority-coloured ring, pressed feedback on pointer-down
    ========================================================================== */
 

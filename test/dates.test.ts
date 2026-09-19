@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { todayISO, splitOverdueAndToday, groupUpcoming } from '../src/lib/dates';
+import { todayISO, splitOverdueAndToday, groupUpcoming, getWeekDates, groupWeek } from '../src/lib/dates';
 import type { Task } from '../src/lib/db';
 
 function task(overrides: Partial<Task>): Task {
@@ -46,5 +46,40 @@ describe('groupUpcoming', () => {
     const groups = groupUpcoming(tasks, today);
     expect(groups.map((g) => g.date)).toEqual(['2026-06-18', '2026-06-20']);
     expect(groups[1].tasks.map((t) => t.id)).toEqual([1, 3]);
+  });
+});
+
+describe('getWeekDates', () => {
+  it('returns 7 consecutive dates starting today', () => {
+    expect(getWeekDates('2026-06-15')).toEqual([
+      '2026-06-15', '2026-06-16', '2026-06-17', '2026-06-18',
+      '2026-06-19', '2026-06-20', '2026-06-21',
+    ]);
+  });
+
+  it('rolls over a month boundary', () => {
+    expect(getWeekDates('2026-06-28')).toEqual([
+      '2026-06-28', '2026-06-29', '2026-06-30', '2026-07-01',
+      '2026-07-02', '2026-07-03', '2026-07-04',
+    ]);
+  });
+});
+
+describe('groupWeek', () => {
+  const weekDates = getWeekDates('2026-06-15');
+
+  it('buckets tasks by date and keeps every date, even with none', () => {
+    const tasks = [
+      task({ id: 1, due_date: '2026-06-15' }),
+      task({ id: 2, due_date: '2026-06-17' }),
+      task({ id: 3, due_date: '2026-06-17' }),
+      task({ id: 4, due_date: '2026-06-30' }), // outside the window
+      task({ id: 5, due_date: null }),
+    ];
+    const days = groupWeek(tasks, weekDates);
+    expect(days.map((d) => d.date)).toEqual(weekDates);
+    expect(days[0].tasks.map((t) => t.id)).toEqual([1]);
+    expect(days[2].tasks.map((t) => t.id)).toEqual([2, 3]);
+    expect(days[1].tasks).toEqual([]);
   });
 });

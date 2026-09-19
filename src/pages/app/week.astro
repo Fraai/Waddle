@@ -1,0 +1,88 @@
+---
+import AppLayout from '../../layouts/AppLayout.astro';
+import { actions } from 'astro:actions';
+import { env } from 'cloudflare:workers';
+import { listOpenDatedTasks, listProjects } from '../../lib/db';
+import { todayISO, getWeekDates, groupWeek } from '../../lib/dates';
+import { formatWeekday, formatDayMonth } from '../../lib/format';
+
+const user = Astro.locals.user!;
+const [tasks, projects] = await Promise.all([
+  listOpenDatedTasks(env.DB, user.id),
+  listProjects(env.DB, user.id),
+]);
+const inbox = projects.find((p) => p.is_inbox === 1);
+const projectsById = new Map(projects.map((p) => [p.id, p]));
+
+// Same spacing as AppLayout.astro's sidebar dots — golden-angle hue steps
+// give every project a distinct, stable colour without storing one.
+const projectHue = (id: number) => (id * 137.5) % 360;
+
+const today = todayISO();
+const weekDates = getWeekDates(today);
+const days = groupWeek(tasks, weekDates);
+---
+<AppLayout title="Week">
+  <header class="page-head">
+    <h1 class="page-title">Week</h1>
+    <p class="mt-1 text-sm" style="color: var(--text-2)">{formatWeekday(weekDates[0])} {formatDayMonth(weekDates[0])} – {formatWeekday(weekDates[6])} {formatDayMonth(weekDates[6])}</p>
+  </header>
+
+  <div class="week-grid">
+    {days.map((day, i) => (
+      <section class="week-day">
+        <h2 class="label-caps mb-2" style={i === 0 ? 'color: var(--accent)' : undefined}>
+          {i === 0 ? 'Today' : formatWeekday(day.date)} · {formatDayMonth(day.date)}
+        </h2>
+
+        <ul class="task-list" data-date={day.date} data-remove-done>
+          {day.tasks.map((task) => (
+            <li data-task-id={task.id} data-priority={task.priority} data-due-date={task.due_date} class="task-row">
+              <div class="task-main">
+                <input
+                  type="checkbox"
+                  class="task-toggle check"
+                  data-task-id={task.id}
+                  aria-label={`Mark "${task.title}" done`}
+                />
+                <span
+                  class="project-dot"
+                  style={`--dot: hsl(${projectHue(task.project_id)} 62% 52%)`}
+                  title={projectsById.get(task.project_id)?.name}
+                ></span>
+                <span class="task-title">{task.title}</span>
+                <button class="task-delete icon-btn" data-task-id={task.id} title={`Delete "${task.title}"`}>
+                  <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+                    <path d="M4 4l8 8M12 4l-8 8" />
+                  </svg>
+                  <span class="sr-only">Delete task</span>
+                </button>
+              </div>
+            </li>
+          ))}
+        </ul>
+
+        {inbox && (
+          <form method="POST" action={actions.createTask} class="composer mt-2" data-kind="week" data-date={day.date}>
+            <input type="hidden" name="projectId" value={inbox.id} />
+            <input type="hidden" name="dueDate" value={day.date} />
+            <input name="title" placeholder="Add task" aria-label="Task title" required />
+            <select name="priority" aria-label="Priority">
+              <option value="4" selected>P4</option>
+              <option value="3">P3</option>
+              <option value="2">P2</option>
+              <option value="1">P1</option>
+            </select>
+            <button type="submit" class="btn btn--submit" title="Add task">
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+                <path d="M8 3.5v9M3.5 8h9" />
+              </svg>
+              <span class="sr-only">Add task</span>
+            </button>
+          </form>
+        )}
+      </section>
+    ))}
+  </div>
+</AppLayout>
+<script src="../../scripts/week.ts"></script>

@@ -15,3 +15,11 @@ export function formatDateHeading(iso: string, today: string): string {
   if (iso === tomorrowISO) return `Tomorrow · ${formatDate(iso)}`;
   return formatDate(iso);
 }
+
+export function formatWeekday(iso: string): string {
+  return new Date(`${iso}T00:00:00`).toLocaleDateString('en-GB', { weekday: 'short' });
+}
+
+export function formatDayMonth(iso: string): string {
+  return new Date(`${iso}T00:00:00`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+}

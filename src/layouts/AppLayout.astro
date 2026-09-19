@@ -108,6 +108,14 @@ const projectHue = (id: number) => (id * 137.5) % 360;
         Upcoming
       </a>
 
+      <a href="/app/week" class="nav-item" data-astro-prefetch aria-current={isActive('/app/week') ? 'page' : undefined}>
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="1.5" y="3.5" width="13" height="9" rx="1.5" />
+          <path d="M4.5 3.5v9M7.5 3.5v9M10.5 3.5v9" />
+        </svg>
+        Week
+      </a>
+
       {inbox && (
         <a
           href={`/app/projects/${inbox.id}`}

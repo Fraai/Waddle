@@ -8,6 +8,10 @@ import { formatDate, formatDateHeading } from '../lib/format';
 const DELETE_ICON =
   '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M4 4l8 8M12 4l-8 8" /></svg><span class="sr-only">Delete task</span>';
 
+// Same spacing as AppLayout.astro's sidebar dots — golden-angle hue steps
+// give every project a distinct, stable colour without storing one.
+const projectHue = (id: number) => (id * 137.5) % 360;
+
 interface CreatedTask {
   id: number;
   title: string;
@@ -20,7 +24,12 @@ interface CreatedTask {
  * — true on project pages, never on Today/Upcoming (no subtasks there). */
 function buildTaskRow(
   task: CreatedTask,
-  opts: { showPill: boolean; today: string; subtaskAddProjectId?: number },
+  opts: {
+    showPill: boolean;
+    today: string;
+    subtaskAddProjectId?: number;
+    projectDot?: { projectId: number; name: string };
+  },
 ): HTMLLIElement {
   const li = document.createElement('li');
   li.dataset.taskId = String(task.id);
@@ -37,11 +46,21 @@ function buildTaskRow(
   checkbox.dataset.taskId = String(task.id);
   checkbox.setAttribute('aria-label', `Mark "${task.title}" done`);
 
+  main.append(checkbox);
+
+  if (opts.projectDot) {
+    const dot = document.createElement('span');
+    dot.className = 'project-dot';
+    dot.style.setProperty('--dot', `hsl(${projectHue(opts.projectDot.projectId)} 62% 52%)`);
+    dot.title = opts.projectDot.name;
+    main.append(dot);
+  }
+
   const title = document.createElement('span');
   title.className = 'task-title';
   title.textContent = task.title;
 
-  main.append(checkbox, title);
+  main.append(title);
 
   if (opts.showPill && task.due_date) {
     const pill = document.createElement('span');
@@ -252,11 +271,33 @@ function attachUpcomingComposer(form: HTMLFormElement): void {
   });
 }
 
+/** A Week column's composer — always creates into Inbox with that column's
+ * fixed date, and (unlike Today) the target list always exists, so no
+ * empty-state swap is needed. */
+function attachWeekComposer(form: HTMLFormElement): void {
+  const projectIdInput = form.querySelector<HTMLInputElement>('input[name="projectId"]');
+  const projectId = Number(projectIdInput?.value);
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const task = await submitCreateTask(form);
+    if (!task) return;
+
+    const section = form.closest('section');
+    const list = section?.querySelector<HTMLUListElement>('ul.task-list');
+    list?.append(
+      buildTaskRow(task, { showPill: false, today: '', projectDot: { projectId, name: 'Inbox' } }),
+    );
+    resetTitle(form);
+  });
+}
+
 export function attachTaskComposers(): void {
   const projectRoot = document.querySelector<HTMLElement>('[data-project-root]');
 
   document.querySelectorAll<HTMLFormElement>('form[data-kind="today"]').forEach(attachTodayComposer);
   document.querySelectorAll<HTMLFormElement>('form[data-kind="upcoming"]').forEach(attachUpcomingComposer);
+  document.querySelectorAll<HTMLFormElement>('form[data-kind="week"]').forEach(attachWeekComposer);
   if (projectRoot) {
     document
       .querySelectorAll<HTMLFormElement>('form[data-kind="project"]')
