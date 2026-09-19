@@ -29,7 +29,7 @@ const projectHue = (id: number) => (id * 137.5) % 360;
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="robots" content="noindex, nofollow" />
     <title>{title} · Todo</title>
-    <script is:inline>
+    <script is:inline nonce={Astro.locals.cspNonce}>
       // Runs before the sidebar paints, so a collapsed preference from a
       // previous visit never flashes open first. Desktop-only concern — the
       // mobile drawer below is separate and always starts closed.
@@ -229,7 +229,7 @@ const projectHue = (id: number) => (id * 137.5) % 360;
     <!-- Read by task-edit.ts to populate the detail modal's project picker —
          every page already fetches this list for the sidebar, so no extra
          request just to move a task between projects. -->
-    <script type="application/json" id="projects-data" set:html={JSON.stringify(projects.map((p) => ({ id: p.id, name: p.name })))} />
+    <script type="application/json" id="projects-data" set:html={JSON.stringify(projects.map((p) => ({ id: p.id, name: p.name }))).replace(/</g, '\\u003c')} />
   </body>
 </html>
 <script src="../scripts/sidebar.ts"></script>

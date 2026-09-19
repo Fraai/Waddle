@@ -3,8 +3,21 @@ import { getActionContext } from 'astro:actions';
 import { env } from 'cloudflare:workers';
 import { parseCookies, verifyJWT } from './utils/auth';
 
-function noindex(response: Response): Response {
+function securityHeaders(response: Response, nonce: string): Response {
   response.headers.set('X-Robots-Tag', 'noindex, nofollow');
+  response.headers.set('X-Content-Type-Options', 'nosniff');
+  response.headers.set('Referrer-Policy', 'same-origin');
+  response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=()');
+  response.headers.set('Content-Security-Policy', [
+    "default-src 'self'",
+    `script-src 'self' 'nonce-${nonce}'`,
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data:",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "frame-ancestors 'none'",
+  ].join('; '));
   return response;
 }
 
@@ -13,6 +26,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
   const url = new URL(request.url);
 
   locals.user = null;
+  locals.cspNonce = crypto.randomUUID();
   const cookies = parseCookies(request.headers.get('cookie'));
   const token = cookies['auth-token'];
   if (token) {
@@ -23,7 +37,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
   }
 
   if (url.pathname.startsWith('/app') && !locals.user) {
-    return noindex(new Response(null, { status: 302, headers: { Location: '/login' } }));
+    return securityHeaders(new Response(null, { status: 302, headers: { Location: '/login' } }), locals.cspNonce);
   }
 
   // Form-submitted actions are handled here rather than in a page, because a
@@ -35,10 +49,10 @@ export const onRequest = defineMiddleware(async (context, next) => {
   if (action?.calledFrom === 'form') {
     const result = await action.handler();
     if (!result.error) {
-      return noindex(new Response(null, { status: 303, headers: { Location: url.pathname } }));
+      return securityHeaders(new Response(null, { status: 303, headers: { Location: url.pathname } }), locals.cspNonce);
     }
     setActionResult(action.name, serializeActionResult(result));
   }
 
-  return noindex(await next());
+  return securityHeaders(await next(), locals.cspNonce);
 });

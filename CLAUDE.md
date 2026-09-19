@@ -62,7 +62,7 @@ npm run deploy    # Build and deploy to Cloudflare
 
 ## Key files
 
-- `src/middleware.ts` — JWT verification, route guard for `/app/*`
+- `src/middleware.ts` — JWT verification, route guard for `/app/*`, security response headers (CSP with a per-request nonce, `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy`)
 - `src/utils/auth.ts` — Google OAuth helpers, JWT sign/verify, domain allowlist
 - `src/lib/users.ts` — user + inbox-project auto-provisioning on login
 - `src/lib/db.ts` — all project/section/task queries, scoped to the acting user
