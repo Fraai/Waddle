@@ -809,13 +809,29 @@ h2:hover > .icon-btn,
   border: 1px solid var(--hairline);
   border-radius: var(--r-lg);
   box-shadow: var(--shadow-2);
-  opacity: 1;
-  transform: scale(1);
-  transition: opacity var(--med) var(--ease), transform var(--med) var(--ease),
-    display var(--med) allow-discrete, overlay var(--med) allow-discrete;
+  /* Open/closed lives on [open] alone, animated with plain opacity/transform
+     transitions — no `display`/`overlay allow-discrete`. That combination
+     is meant to delay display:none until a closing transition finishes, but
+     it left `display` stuck at `block` after close() in testing (confirmed
+     even with the textbook MDN pattern, in an otherwise-empty page) — the
+     (invisible, opacity: 0) dialog kept intercepting clicks on whatever was
+     underneath it, permanently, the first time anyone closed it. JS
+     (task-edit.ts's closeModal) plays this same closed-state transition via
+     .task-modal--closing *before* calling the dialog's real .close(), so
+     the actual close — and its native display:none — only happens once the
+     fade has finished, with no dependency on browser support for delaying
+     a discrete property. */
+  opacity: 0;
+  transform: scale(0.96);
+  transition: opacity var(--med) var(--ease), transform var(--med) var(--ease);
 }
 
-.task-modal:not([open]) {
+.task-modal[open] {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.task-modal[open].task-modal--closing {
   opacity: 0;
   transform: scale(0.96);
 }
@@ -828,13 +844,16 @@ h2:hover > .icon-btn,
 }
 
 .task-modal::backdrop {
-  background: rgba(0, 0, 0, 0.35);
-  transition: background-color var(--med) var(--ease), display var(--med) allow-discrete,
-    overlay var(--med) allow-discrete;
+  background: rgb(0 0 0 / 0);
+  transition: background-color var(--med) var(--ease);
 }
 
-.task-modal:not([open])::backdrop {
-  background-color: rgb(0 0 0 / 0);
+.task-modal[open]::backdrop {
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.task-modal[open].task-modal--closing::backdrop {
+  background: rgb(0 0 0 / 0);
 }
 
 @starting-style {
@@ -975,7 +994,8 @@ h2:hover > .icon-btn,
   }
 
   .task-modal,
-  .task-modal:not([open]) {
+  .task-modal[open],
+  .task-modal[open].task-modal--closing {
     transform: none;
   }
 

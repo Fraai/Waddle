@@ -33,6 +33,36 @@ let modal: Modal | null = null;
 let activeLi: HTMLElement | null = null;
 let baseline: { dueDate: string; priority: string; projectId: string } | null = null;
 
+// If a close is still fading out when a new one is requested (e.g. openTaskModal
+// force-finishing it before reopening), this finishes it immediately instead of
+// leaving two competing timers/listeners on the dialog.
+let pendingClose: (() => void) | null = null;
+
+/** Plays the closing fade (.task-modal--closing), then calls the dialog's
+ * real close() once it's done — never before, since a native dialog snaps
+ * `display` to `none` (and drops out of the top layer) the instant close()
+ * runs, with no way to defer that from CSS alone reliably (see the comment
+ * on .task-modal in global.css for what went wrong trying to). */
+function closeModal(dialog: HTMLDialogElement): void {
+  pendingClose?.();
+  dialog.classList.add('task-modal--closing');
+  let done = false;
+  const finish = () => {
+    if (done) return;
+    done = true;
+    dialog.removeEventListener('transitionend', finish);
+    clearTimeout(timer);
+    dialog.classList.remove('task-modal--closing');
+    dialog.close();
+    pendingClose = null;
+  };
+  dialog.addEventListener('transitionend', finish);
+  // Safety net — reduced motion (no transition plays) or any other case
+  // where transitionend never fires shouldn't strand the dialog open.
+  const timer = setTimeout(finish, 300);
+  pendingClose = finish;
+}
+
 function buildModal(): Modal {
   const dialog = document.createElement('dialog');
   dialog.className = 'task-modal';
@@ -119,14 +149,14 @@ function buildModal(): Modal {
   dialog.append(form);
   document.body.append(dialog);
 
-  closeBtn.addEventListener('click', () => dialog.close());
-  cancelBtn.addEventListener('click', () => dialog.close());
+  closeBtn.addEventListener('click', () => closeModal(dialog));
+  cancelBtn.addEventListener('click', () => closeModal(dialog));
   // The backdrop is the ::backdrop pseudo-element — a click that lands there
   // (not on any element inside the dialog's own box) reports the dialog
   // itself as the target, which is what distinguishes it from a click on
   // the form or its fields.
   dialog.addEventListener('click', (e) => {
-    if (e.target === dialog) dialog.close();
+    if (e.target === dialog) closeModal(dialog);
   });
   dialog.addEventListener('close', () => {
     activeLi = null;
@@ -140,7 +170,7 @@ function buildModal(): Modal {
 
   deleteBtn.addEventListener('click', () => {
     const rowDeleteBtn = activeLi?.querySelector<HTMLButtonElement>('.task-delete');
-    dialog.close();
+    closeModal(dialog);
     rowDeleteBtn?.click();
   });
 
@@ -193,7 +223,7 @@ function buildModal(): Modal {
     syncHrefBadge(li, hrefInput.value);
     saveBtn.disabled = false;
     deleteBtn.disabled = false;
-    dialog.close();
+    closeModal(dialog);
   });
 
   return {
@@ -236,6 +266,11 @@ function openTaskModal(li: HTMLElement): void {
   const titleEl = li.querySelector<HTMLElement>('.task-title');
   if (!titleEl) return;
   const m = ensureModal();
+  // showModal() throws on a dialog that's already [open] — which this one
+  // still is if a previous close is mid-fade-out. Finish that instantly
+  // rather than wait for it, so reopening (or opening a different task)
+  // right after closing one never errors.
+  pendingClose?.();
 
   activeLi = li;
   const dueDate = li.dataset.dueDate || '';
