@@ -174,11 +174,11 @@ function attachProjectDelete(button: HTMLButtonElement): void {
     const link = row?.querySelector<HTMLAnchorElement>('a.nav-item');
     const onThisProject = link != null && location.pathname === link.getAttribute('href');
 
-    if (row) row.hidden = true;
+    row?.classList.add('row-leave');
 
     const { error } = await actions.deleteProject({ projectId });
     if (error) {
-      if (row) row.hidden = false;
+      row?.classList.remove('row-leave');
       alert(error.message);
       return;
     }
@@ -250,7 +250,7 @@ newProjectForm?.addEventListener('submit', async (e) => {
   const li = document.createElement('li');
   li.dataset.projectId = String(project.id);
   li.dataset.projectType = project.type;
-  li.className = 'flex items-center gap-1';
+  li.className = 'flex items-center gap-1 row-enter';
 
   const dot = document.createElement('button');
   dot.type = 'button';

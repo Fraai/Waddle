@@ -12,13 +12,13 @@ export function attachTaskDelete(button: HTMLButtonElement): void {
     const countable = row?.classList.contains('task-row') ?? false;
     const wasOpen = countable && !row?.querySelector<HTMLInputElement>('.task-toggle')?.checked;
 
-    // Optimistic: hide now, drop it for good once the delete lands.
-    if (row) row.hidden = true;
+    // Optimistic: fade now, drop it for good once the delete lands.
+    row?.classList.add('row-leave');
     if (wasOpen) bumpOpenCount(-1);
 
     const { error } = await actions.deleteTask({ taskId });
     if (error) {
-      if (row) row.hidden = false;
+      row?.classList.remove('row-leave');
       if (wasOpen) bumpOpenCount(1);
       alert(error.message);
       return;

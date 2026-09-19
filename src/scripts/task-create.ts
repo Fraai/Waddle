@@ -39,7 +39,7 @@ function buildTaskRow(
   li.dataset.dueDate = task.due_date ?? '';
   li.dataset.projectId = String(task.project_id);
   if (opts.projectType) li.dataset.projectType = opts.projectType;
-  li.className = 'task-row';
+  li.className = 'task-row row-enter';
 
   const main = document.createElement('div');
   main.className = 'task-main';
@@ -114,7 +114,7 @@ function buildTaskRow(
 /** Builds a subtask row — no pill, matching server markup. */
 function buildSubtaskRow(task: CreatedTask): HTMLLIElement {
   const li = document.createElement('li');
-  li.className = 'subtask';
+  li.className = 'subtask row-enter';
   li.dataset.taskId = String(task.id);
   li.dataset.priority = String(task.priority);
   li.dataset.dueDate = task.due_date ?? '';

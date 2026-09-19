@@ -127,7 +127,7 @@ if (root && projectId !== null) {
     }
 
     const block = document.createElement('section');
-    block.className = 'mb-6';
+    block.className = 'mb-6 row-enter';
     block.dataset.sectionId = String(section.id);
 
     const h2 = document.createElement('h2');

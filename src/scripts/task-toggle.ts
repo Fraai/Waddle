@@ -28,7 +28,11 @@ export function attachTaskToggle(checkbox: HTMLInputElement): void {
     const removeOnDone = countable && row?.closest('[data-remove-done]') != null;
 
     if (removeOnDone && checkbox.checked) {
-      if (row) row.hidden = true;
+      // Fade first, collapse out of the layout once toggleTaskDone below
+      // resolves — by then the fade has almost always already finished
+      // (network round-trip outlasts the --fast transition), so there's no
+      // visible jump.
+      row?.classList.add('row-leave');
     } else {
       paint(checkbox);
     }
@@ -38,13 +42,15 @@ export function attachTaskToggle(checkbox: HTMLInputElement): void {
     if (error) {
       checkbox.checked = !checkbox.checked;
       if (removeOnDone) {
-        if (row) row.hidden = false;
+        row?.classList.remove('row-leave');
       } else {
         paint(checkbox);
       }
       if (countable) bumpOpenCount(checkbox.checked ? -1 : 1);
       alert(error.message);
+      return;
     }
+    if (removeOnDone && row) row.hidden = true;
   });
 }
 

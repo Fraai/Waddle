@@ -293,7 +293,7 @@ body {
    week.astro / the task composer are plain decorative spans. */
 button.project-dot {
   cursor: pointer;
-  transition: transform var(--fast) var(--ease);
+  transition: transform var(--fast) var(--ease), background-color var(--fast) var(--ease);
 }
 
 button.project-dot:hover {
@@ -401,7 +401,8 @@ html[data-task-filter="private"] [data-project-type="work"] {
 .task-row {
   padding: var(--space-2) var(--space-3);
   background: var(--surface);
-  transition: background var(--fast) var(--ease);
+  transition: background var(--fast) var(--ease), opacity var(--fast) var(--ease),
+    transform var(--fast) var(--ease);
 }
 
 .task-row:hover {
@@ -421,6 +422,7 @@ html[data-task-filter="private"] [data-project-type="work"] {
   line-height: 1.45;
   word-break: break-word;
   cursor: pointer;
+  transition: color var(--fast) var(--ease), text-decoration-color var(--fast) var(--ease);
 }
 
 .task-title[data-done] {
@@ -588,6 +590,33 @@ h2:hover > .icon-btn,
   align-items: flex-start;
   gap: var(--space-2);
   font-size: 0.85rem;
+  transition: opacity var(--fast) var(--ease), transform var(--fast) var(--ease);
+}
+
+/* Task/subtask rows fading out before removal (delete, or marked done on a
+   page that only lists open tasks — see task-toggle.ts/task-delete.ts). */
+.row-leave {
+  /* Declared here too (not just on .task-row/.subtask) so this class also
+     works on elements with no transition of their own, like a sidebar
+     project row — the reverse (removing the class to undo, on error) only
+     animates smoothly where the resting class already declares one. */
+  transition: opacity var(--fast) var(--ease), transform var(--fast) var(--ease);
+  opacity: 0;
+  transform: scale(0.97);
+  pointer-events: none;
+}
+
+/* New rows added without a reload (task-create.ts) — plays once on mount,
+   never retriggers on the same node. */
+@keyframes row-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
+}
+
+.row-enter {
+  animation: row-enter var(--med) var(--ease);
 }
 
 .subtask .check {
@@ -780,10 +809,38 @@ h2:hover > .icon-btn,
   border: 1px solid var(--hairline);
   border-radius: var(--r-lg);
   box-shadow: var(--shadow-2);
+  opacity: 1;
+  transform: scale(1);
+  transition: opacity var(--med) var(--ease), transform var(--med) var(--ease),
+    display var(--med) allow-discrete, overlay var(--med) allow-discrete;
+}
+
+.task-modal:not([open]) {
+  opacity: 0;
+  transform: scale(0.96);
+}
+
+@starting-style {
+  .task-modal[open] {
+    opacity: 0;
+    transform: scale(0.96);
+  }
 }
 
 .task-modal::backdrop {
   background: rgba(0, 0, 0, 0.35);
+  transition: background-color var(--med) var(--ease), display var(--med) allow-discrete,
+    overlay var(--med) allow-discrete;
+}
+
+.task-modal:not([open])::backdrop {
+  background-color: rgb(0 0 0 / 0);
+}
+
+@starting-style {
+  .task-modal[open]::backdrop {
+    background-color: rgb(0 0 0 / 0);
+  }
 }
 
 .task-modal-form {
@@ -907,6 +964,25 @@ h2:hover > .icon-btn,
 
   .sortable-chosen {
     box-shadow: none;
+  }
+
+  /* Keep the opacity fades (they aid comprehension — something appeared,
+     disappeared, or changed state) but drop the movement. */
+  .row-leave,
+  .task-row,
+  .subtask {
+    transform: none;
+  }
+
+  .task-modal,
+  .task-modal:not([open]) {
+    transform: none;
+  }
+
+  @starting-style {
+    .task-modal[open] {
+      transform: none;
+    }
   }
 }
 
