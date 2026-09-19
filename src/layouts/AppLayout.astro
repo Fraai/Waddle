@@ -29,6 +29,16 @@ const projectHue = (id: number) => (id * 137.5) % 360;
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="robots" content="noindex, nofollow" />
     <title>{title} · Todo</title>
+    <script is:inline>
+      // Runs before the sidebar paints, so a collapsed preference from a
+      // previous visit never flashes open first. Desktop-only concern — the
+      // mobile drawer below is separate and always starts closed.
+      try {
+        if (localStorage.getItem('sidebarCollapsed') === 'true') {
+          document.documentElement.dataset.sidebarCollapsed = 'true';
+        }
+      } catch {}
+    </script>
   </head>
   <body class="flex min-h-screen flex-col md:flex-row">
     <input type="checkbox" id="nav-toggle" class="peer sr-only md:hidden" aria-label="Toggle menu" />
@@ -49,10 +59,37 @@ const projectHue = (id: number) => (id * 137.5) % 360;
       class="fixed inset-0 z-[15] bg-black/35 opacity-0 pointer-events-none transition-opacity duration-200 peer-checked:opacity-100 peer-checked:pointer-events-auto md:hidden"
     ></label>
 
-    <aside class="sidebar fixed inset-y-0 left-0 z-20 flex w-[min(85vw,320px)] shrink-0 -translate-x-full flex-col gap-1 p-3 transition-transform duration-200 peer-checked:translate-x-0 md:sticky md:inset-y-auto md:left-auto md:top-0 md:z-auto md:h-screen md:w-64 md:translate-x-0">
-      <div class="px-2 pb-4 pt-2">
-        <div class="text-[0.9375rem] font-semibold tracking-[-0.01em]">Todo</div>
-        <div class="text-xs" style="color: var(--text-3)">{user.email}</div>
+    <button
+      id="sidebar-expand"
+      type="button"
+      class="sidebar-toggle sidebar-expand-btn"
+      title="Show sidebar (⌘B)"
+      aria-label="Show sidebar"
+    >
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round">
+        <rect x="2" y="3" width="12" height="10" rx="1.5" />
+        <path d="M6.5 3v10" />
+      </svg>
+    </button>
+
+    <aside class="sidebar fixed inset-y-0 left-0 z-20 flex w-[min(85vw,320px)] shrink-0 -translate-x-full flex-col gap-1 p-3 transition-transform duration-200 peer-checked:translate-x-0 md:sticky md:inset-y-auto md:left-auto md:top-0 md:z-auto md:h-screen md:translate-x-0">
+      <div class="flex items-start justify-between px-2 pb-4 pt-2">
+        <div>
+          <div class="text-[0.9375rem] font-semibold tracking-[-0.01em]">Todo</div>
+          <div class="text-xs" style="color: var(--text-3)">{user.email}</div>
+        </div>
+        <button
+          id="sidebar-collapse"
+          type="button"
+          class="sidebar-toggle sidebar-collapse-btn"
+          title="Hide sidebar (⌘B)"
+          aria-label="Hide sidebar"
+        >
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round">
+            <rect x="2" y="3" width="12" height="10" rx="1.5" />
+            <path d="M6.5 3v10" />
+          </svg>
+        </button>
       </div>
 
       <a href="/app/today" class="nav-item" data-astro-prefetch aria-current={isActive('/app/today') ? 'page' : undefined}>

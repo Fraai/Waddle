@@ -11,6 +11,52 @@ const RENAME_ICON =
 // hue steps give every project a distinct, stable colour without storing one.
 const projectHue = (id: number) => (id * 137.5) % 360;
 
+// Desktop sidebar collapse — separate from the mobile drawer's checkbox,
+// which stays CSS-only. The inline <script> in AppLayout.astro's <head>
+// already applied a stored preference before paint; this just handles
+// clicks from here on.
+const sidebarEl = document.querySelector<HTMLElement>('.sidebar');
+const collapseBtn = document.getElementById('sidebar-collapse');
+const expandBtn = document.getElementById('sidebar-expand');
+// The collapsed *preference* is width-independent, but it only visually
+// applies at md+ (see global.css) — below that the mobile drawer takes
+// over, so inert must track "collapsed AND desktop", not collapsed alone,
+// or a desktop-collapsed sidebar would also lock out the mobile drawer.
+const desktopMQ = window.matchMedia('(min-width: 768px)');
+
+function syncSidebarInert(): void {
+  if (!sidebarEl) return;
+  sidebarEl.inert = document.documentElement.dataset.sidebarCollapsed === 'true' && desktopMQ.matches;
+}
+
+function setSidebarCollapsed(collapsed: boolean, focusTarget?: HTMLElement | null): void {
+  document.documentElement.dataset.sidebarCollapsed = String(collapsed);
+  // inert both hides it from assistive tech and blocks keyboard focus from
+  // landing in a panel that's visually gone — aria-hidden alone wouldn't
+  // stop Tab from reaching it, since pointer-events:none only blocks clicks.
+  syncSidebarInert();
+  try {
+    localStorage.setItem('sidebarCollapsed', String(collapsed));
+  } catch {}
+  focusTarget?.focus();
+}
+
+// Apply whatever the head script already decided before this ran, and keep
+// it in sync if the window crosses the desktop breakpoint afterwards.
+syncSidebarInert();
+desktopMQ.addEventListener('change', syncSidebarInert);
+
+collapseBtn?.addEventListener('click', () => setSidebarCollapsed(true, expandBtn));
+expandBtn?.addEventListener('click', () => setSidebarCollapsed(false, collapseBtn));
+
+document.addEventListener('keydown', (e) => {
+  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'b') {
+    e.preventDefault();
+    const collapsed = document.documentElement.dataset.sidebarCollapsed === 'true';
+    setSidebarCollapsed(!collapsed, collapsed ? collapseBtn : expandBtn);
+  }
+});
+
 const list = document.getElementById('project-list');
 if (list) {
   new Sortable(list, {
