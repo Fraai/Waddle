@@ -1,5 +1,6 @@
 import { actions } from 'astro:actions';
 import { bumpOpenCount } from './open-count';
+import { showToast } from './toast';
 
 function paint(checkbox: HTMLInputElement): void {
   const title = checkbox.nextElementSibling;
@@ -15,6 +16,7 @@ export function attachTaskToggle(checkbox: HTMLInputElement): void {
   checkbox.addEventListener('change', async () => {
     const taskId = Number(checkbox.dataset.taskId);
     const row = checkbox.closest<HTMLElement>('li');
+    const title = row?.querySelector('.task-title')?.textContent ?? 'Task';
     // Top-level tasks (class task-row) are the ones the header counts —
     // subtasks (class subtask) aren't. Both wrap their checkbox in the same
     // .task-main div, so that alone can't tell them apart.
@@ -26,6 +28,7 @@ export function attachTaskToggle(checkbox: HTMLInputElement): void {
     // load) but keep subtasks struck-through in place, matching `countable`
     // above — both are true only for a .task-row, never a .subtask.
     const removeOnDone = countable && row?.closest('[data-remove-done]') != null;
+    const wasCompleting = checkbox.checked;
 
     if (removeOnDone && checkbox.checked) {
       // Fade first, collapse out of the layout once toggleTaskDone below
@@ -52,12 +55,34 @@ export function attachTaskToggle(checkbox: HTMLInputElement): void {
     }
     // A repeating task's next occurrence was just created server-side —
     // simplest to reload than to work out where (if anywhere) it belongs in
-    // whatever list is currently on screen.
+    // whatever list is currently on screen. No undo offered here: reverting
+    // would also need to remove that new occurrence.
     if (data?.nextOccurrenceCreated) {
       location.reload();
       return;
     }
     if (removeOnDone && row) row.hidden = true;
+
+    if (wasCompleting) {
+      showToast(`Completed "${title}"`, async () => {
+        checkbox.checked = false;
+        if (removeOnDone && row) {
+          row.hidden = false;
+          row.classList.remove('row-leave');
+        }
+        paint(checkbox);
+        if (countable) bumpOpenCount(1);
+
+        const { error } = await actions.toggleTaskDone({ taskId });
+        if (error) {
+          checkbox.checked = true;
+          if (removeOnDone && row) row.hidden = true;
+          paint(checkbox);
+          if (countable) bumpOpenCount(-1);
+          alert(error.message);
+        }
+      });
+    }
   });
 }
 
