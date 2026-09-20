@@ -4,6 +4,7 @@ dist/
 # test output
 test-results/
 .superpowers/
+docs/superpowers/
 
 # generated types
 .astro/
