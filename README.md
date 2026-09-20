@@ -1,4 +1,4 @@
-# Todo
+# Waddle
 
 A self-hosted Todoist alternative that talks to Claude natively: task management as an MCP server, not just a web app. Built by [Fraai Agency](https://fraai.agency), a web studio in Flanders, and used daily by the team in production since it shipped.
 
@@ -108,6 +108,10 @@ npm run db:migrate:remote  # Apply migrations to production
 ```
 
 See `CLAUDE.md` for architecture, the full list of required secrets, and the MCP tool reference.
+
+## Why "Waddle"
+
+Getting your ducks in a row is the whole point of a task list. The name's the idiom, the pace is the point: steady, one task at a time, rather than everything at once.
 
 ## License
 

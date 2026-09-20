@@ -1,6 +1,6 @@
 {
-  "name": "Fraai Agency Todo",
-  "short_name": "Todo",
+  "name": "Waddle",
+  "short_name": "Waddle",
   "start_url": "/app/today",
   "scope": "/",
   "display": "standalone",

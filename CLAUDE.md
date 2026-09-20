@@ -1,6 +1,6 @@
-# CLAUDE.md — todo.fraai.agency
+# CLAUDE.md — Waddle (todo.fraai.agency)
 
-Internal Todoist alternative for the Fraai Agency team. Astro SSR on Cloudflare Workers + D1. Self-hostable for any org — see `README.md` for deploying your own instance.
+Internal Todoist alternative for the Fraai Agency team, branded as "Waddle" for the open-source release. Astro SSR on Cloudflare Workers + D1. Self-hostable for any org — see `README.md` for deploying your own instance.
 
 ## What this app is
 

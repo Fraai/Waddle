@@ -1,10 +1,11 @@
 ---
 import '../../styles/global.css';
+import { env } from 'cloudflare:workers';
 const reason = Astro.url.searchParams.get('reason') ?? 'unknown';
 const messages: Record<string, string> = {
   state: 'Sign-in expired, please try again.',
   exchange: 'Could not verify your Google account, please try again.',
-  domain: 'Only @fraai.agency accounts can sign in.',
+  domain: `Only @${env.ALLOWED_EMAIL_DOMAIN} accounts can sign in.`,
   unknown: 'Something went wrong signing you in.',
 };
 ---
@@ -14,7 +15,7 @@ const messages: Record<string, string> = {
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="robots" content="noindex, nofollow" />
-    <title>Sign-in error · Todo</title>
+    <title>Sign-in error · Waddle</title>
   </head>
   <body class="grid min-h-screen place-items-center p-6">
     <main
