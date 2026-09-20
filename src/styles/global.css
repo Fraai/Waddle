@@ -558,6 +558,9 @@ html[data-task-filter="private"] [data-project-type="work"] {
    ========================================================================== */
 
 .pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
   flex: none;
   font-size: 0.6875rem;
   font-weight: 550;
@@ -567,6 +570,12 @@ html[data-task-filter="private"] [data-project-type="work"] {
   background: var(--row-hover);
   border: 1px solid var(--hairline);
   white-space: nowrap;
+}
+
+.pill svg {
+  width: 0.65rem;
+  height: 0.65rem;
+  flex: none;
 }
 
 .pill--overdue {
