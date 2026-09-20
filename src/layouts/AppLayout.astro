@@ -138,6 +138,13 @@ const projectHue = (id: number) => (id * 137.5) % 360;
         Week
       </a>
 
+      <a href="/app/stats" class="nav-item" data-astro-prefetch aria-current={isActive('/app/stats') ? 'page' : undefined}>
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 13.5v-4M8 13.5v-8M13 13.5v-6" />
+        </svg>
+        Statistics
+      </a>
+
       {inbox && (
         // No data-project-type here — Inbox is the catch-all, not a
         // private/work project, so it (and its tasks, see today/upcoming/

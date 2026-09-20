@@ -1181,3 +1181,248 @@ h2:hover > .icon-btn,
     animation: none;
   }
 }
+
+/* ==========================================================================
+   Statistics (src/pages/app/stats.astro)
+   ========================================================================== */
+
+.stat-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr));
+  gap: var(--space-3);
+  margin-bottom: var(--space-5);
+}
+
+.stat-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-4);
+  background: var(--surface);
+  border-radius: var(--r-md);
+  box-shadow: var(--shadow-1);
+}
+
+.stat-card--streak svg {
+  width: 1.1rem;
+  height: 1.1rem;
+  color: var(--accent-ink);
+  margin-bottom: var(--space-1);
+}
+
+.stat-card-value {
+  font-size: 1.75rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+
+.stat-card-label {
+  font-size: 0.8125rem;
+  color: var(--text-2);
+}
+
+.stats-panel {
+  padding: var(--space-4);
+  background: var(--surface);
+  border-radius: var(--r-md);
+  box-shadow: var(--shadow-1);
+  margin-bottom: var(--space-4);
+}
+
+.stats-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+}
+
+.stats-row .stats-panel {
+  min-width: 16rem;
+}
+
+/* Heatmap — GitHub-style contribution grid. --weeks drives the column
+   count so the grid stays evenly spaced regardless of how many weeks the
+   account's history spans (always ≤53, but a brand-new user has fewer). */
+.heatmap {
+  overflow-x: auto;
+}
+
+.heatmap-months {
+  display: grid;
+  grid-template-columns: repeat(var(--weeks), 0.7rem);
+  gap: 3px;
+  margin-bottom: var(--space-1);
+  font-size: 0.6875rem;
+  color: var(--text-3);
+}
+
+.heatmap-grid {
+  display: grid;
+  grid-template-columns: repeat(var(--weeks), 0.7rem);
+  gap: 3px;
+}
+
+.heatmap-column {
+  display: grid;
+  grid-template-rows: repeat(7, 0.7rem);
+  gap: 3px;
+}
+
+.heatmap-cell {
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 2.5px;
+  background: var(--row-hover);
+}
+
+.heatmap-cell[data-level="1"] { background: color-mix(in oklab, var(--accent) 25%, var(--row-hover)); }
+.heatmap-cell[data-level="2"] { background: color-mix(in oklab, var(--accent) 50%, var(--row-hover)); }
+.heatmap-cell[data-level="3"] { background: color-mix(in oklab, var(--accent) 75%, var(--row-hover)); }
+.heatmap-cell[data-level="4"] { background: var(--accent); }
+
+.heatmap-legend {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin-top: var(--space-2);
+  font-size: 0.75rem;
+  color: var(--text-3);
+}
+
+.heatmap-legend .heatmap-cell {
+  width: 0.6rem;
+  height: 0.6rem;
+}
+
+/* Weekday / hour bar charts */
+.bar-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  height: 7rem;
+}
+
+.bar-chart-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  height: 100%;
+  min-width: 0;
+}
+
+.bar-chart-bar {
+  width: 100%;
+  height: var(--pct);
+  min-height: 2px;
+  background: var(--accent);
+  border-radius: 3px 3px 0 0;
+  transition: opacity var(--fast) var(--ease);
+}
+
+.bar-chart-col:hover .bar-chart-bar {
+  opacity: 0.75;
+}
+
+.bar-chart-label {
+  margin-top: var(--space-1);
+  font-size: 0.6875rem;
+  color: var(--text-3);
+}
+
+.bar-chart--hour .bar-chart-bar {
+  background: var(--accent-ink);
+}
+
+/* Project breakdown */
+.project-bars {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.project-bar-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.project-bar-name {
+  flex: 0 0 7rem;
+  font-size: 0.8125rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.project-bar-track {
+  flex: 1;
+  height: 0.5rem;
+  background: var(--row-hover);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.project-bar-fill {
+  height: 100%;
+  width: var(--pct);
+  background: var(--dot);
+  border-radius: 999px;
+}
+
+.project-bar-count {
+  flex: 0 0 auto;
+  font-size: 0.8125rem;
+  color: var(--text-2);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Priority + work/private stacked bars */
+.priority-stack {
+  display: flex;
+  height: 0.6rem;
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--row-hover);
+}
+
+.priority-stack-seg {
+  width: var(--pct);
+  height: 100%;
+}
+
+.priority-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-3);
+  margin-top: var(--space-2);
+  font-size: 0.8125rem;
+  color: var(--text-2);
+}
+
+.priority-legend li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.priority-dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 999px;
+  flex: none;
+}
+
+.fun-facts {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  font-size: 0.875rem;
+  color: var(--text-2);
+}
+
+.fun-facts strong {
+  color: var(--text);
+  font-weight: 650;
+}

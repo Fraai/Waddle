@@ -1,0 +1,235 @@
+---
+import AppLayout from '../../layouts/AppLayout.astro';
+import { env } from 'cloudflare:workers';
+import { listAllTasks, listProjects } from '../../lib/db';
+import { todayISO } from '../../lib/dates';
+import { formatDate } from '../../lib/format';
+import { computeStats } from '../../lib/stats';
+
+const user = Astro.locals.user!;
+const [tasks, projects] = await Promise.all([
+  listAllTasks(env.DB, user.id),
+  listProjects(env.DB, user.id),
+]);
+const projectTypeById = new Map(projects.map((p) => [p.id, p.type]));
+const stats = computeStats(tasks, projectTypeById, todayISO());
+
+// Same golden-angle hue spacing as AppLayout's sidebar dots and week.astro —
+// kept in sync by hand, see CLAUDE.md.
+const projectHue = (id: number) => (id * 137.5) % 360;
+const projectsById = new Map(projects.map((p) => [p.id, p]));
+
+const maxHeat = Math.max(1, ...stats.heatmap.flat().map((c) => c.count));
+const heatLevel = (count: number) => {
+  if (count === 0) return 0;
+  const ratio = count / maxHeat;
+  if (ratio <= 0.25) return 1;
+  if (ratio <= 0.5) return 2;
+  if (ratio <= 0.75) return 3;
+  return 4;
+};
+const monthLabel = (isoDate: string) =>
+  new Date(`${isoDate}T00:00:00`).toLocaleDateString('en-GB', { month: 'short' });
+// Only label a column when it's the first one to cross into that month.
+let lastMonth = '';
+const columnMonths = stats.heatmap.map((column) => {
+  const m = monthLabel(column[0].date);
+  if (m === lastMonth) return '';
+  lastMonth = m;
+  return m;
+});
+
+const maxWeekday = Math.max(1, ...stats.byWeekday.map((d) => d.count));
+const maxHour = Math.max(1, ...stats.byHour.map((h) => h.count));
+const topProjects = stats.byProject.slice(0, 8);
+const maxProject = Math.max(1, ...topProjects.map((p) => p.count));
+const totalDoneWithDueDate = stats.onTime.onTime + stats.onTime.late;
+const onTimeRate = totalDoneWithDueDate > 0 ? Math.round((stats.onTime.onTime / totalDoneWithDueDate) * 100) : null;
+const priorityColor: Record<number, string> = { 1: 'var(--p1)', 2: 'var(--p2)', 3: 'var(--p3)', 4: 'var(--p4)' };
+---
+<AppLayout title="Statistics" projects={projects}>
+  <div class="mx-auto max-w-5xl">
+    <header class="page-head">
+      <h1 class="page-title">Statistics</h1>
+      <p class="mt-1 text-sm" style="color: var(--text-2)">
+        {stats.totalDone} completed · {stats.totalOpen} open
+      </p>
+    </header>
+
+    <section class="stat-cards">
+      <div class="stat-card stat-card--streak">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M8 1.8c.6 2 .2 3-.7 4-1.4 1.5-2.5 2.6-2.5 4.5a3.2 3.2 0 0 0 6.4 0c0-1-.3-1.7-.9-2.4.3 1.3-.1 2.1-.7 2.5-.1-1.3-.5-2-1.4-2.8-.2 1-.6 1.5-1.2 1.9-.3-2.5.6-4.7 1-7.7Z" />
+        </svg>
+        <span class="stat-card-value">{stats.currentStreak}</span>
+        <span class="stat-card-label">day streak</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-card-value">{stats.longestStreak}</span>
+        <span class="stat-card-label">longest streak</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-card-value">{stats.completedToday}</span>
+        <span class="stat-card-label">done today</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-card-value">{stats.completedLast7Days}</span>
+        <span class="stat-card-label">last 7 days</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-card-value">{stats.completedThisMonth}</span>
+        <span class="stat-card-label">this month</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-card-value">{stats.totalDone}</span>
+        <span class="stat-card-label">all time</span>
+      </div>
+    </section>
+
+    {stats.totalDone === 0 ? (
+      <p class="empty mt-4">Complete a task to start seeing your stats.</p>
+    ) : (
+      <>
+        <section class="stats-panel">
+          <h2 class="label-caps mb-3">Activity</h2>
+          <div class="heatmap" style={`--weeks: ${stats.heatmap.length}`}>
+            <div class="heatmap-months" aria-hidden="true">
+              {columnMonths.map((m) => <span>{m}</span>)}
+            </div>
+            <div class="heatmap-grid">
+              {stats.heatmap.map((column) => (
+                <div class="heatmap-column">
+                  {column.map((cell) => (
+                    <div
+                      class="heatmap-cell"
+                      data-level={heatLevel(cell.count)}
+                      title={`${cell.count} completed on ${formatDate(cell.date)}`}
+                    ></div>
+                  ))}
+                </div>
+              ))}
+            </div>
+          </div>
+          <div class="heatmap-legend">
+            <span>Less</span>
+            <div class="heatmap-cell" data-level="0"></div>
+            <div class="heatmap-cell" data-level="1"></div>
+            <div class="heatmap-cell" data-level="2"></div>
+            <div class="heatmap-cell" data-level="3"></div>
+            <div class="heatmap-cell" data-level="4"></div>
+            <span>More</span>
+          </div>
+        </section>
+
+        <div class="stats-row">
+          <section class="stats-panel flex-1">
+            <h2 class="label-caps mb-3">By day of week</h2>
+            <div class="bar-chart bar-chart--weekday">
+              {stats.byWeekday.map((d) => (
+                <div class="bar-chart-col" title={`${d.label}: ${d.count}`}>
+                  <div class="bar-chart-bar" style={`--pct: ${(d.count / maxWeekday) * 100}%`}></div>
+                  <span class="bar-chart-label">{d.label}</span>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section class="stats-panel flex-1">
+            <h2 class="label-caps mb-3">By hour of day</h2>
+            <div class="bar-chart bar-chart--hour">
+              {stats.byHour.map((h) => (
+                <div class="bar-chart-col" title={`${h.hour}:00 — ${h.count}`}>
+                  <div class="bar-chart-bar" style={`--pct: ${(h.count / maxHour) * 100}%`}></div>
+                  {h.hour % 6 === 0 && <span class="bar-chart-label">{h.hour}</span>}
+                </div>
+              ))}
+            </div>
+          </section>
+        </div>
+
+        <div class="stats-row">
+          <section class="stats-panel flex-1">
+            <h2 class="label-caps mb-3">Top projects</h2>
+            <ul class="project-bars">
+              {topProjects.map((p) => {
+                const project = projectsById.get(p.projectId);
+                const color = project?.color ?? `hsl(${projectHue(p.projectId)} 62% 52%)`;
+                return (
+                  <li class="project-bar-row">
+                    <span class="project-dot" style={`--dot: ${color}`}></span>
+                    <span class="project-bar-name">{project?.name ?? 'Deleted project'}</span>
+                    <div class="project-bar-track">
+                      <div class="project-bar-fill" style={`--pct: ${(p.count / maxProject) * 100}%; --dot: ${color}`}></div>
+                    </div>
+                    <span class="project-bar-count">{p.count}</span>
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
+
+          <section class="stats-panel flex-1">
+            <h2 class="label-caps mb-3">Priority</h2>
+            <div class="priority-stack">
+              {stats.byPriority.map((p) => (
+                stats.totalDone > 0 && p.count > 0 ? (
+                  <div
+                    class="priority-stack-seg"
+                    style={`--pct: ${(p.count / stats.totalDone) * 100}%; background: ${priorityColor[p.priority]}`}
+                    title={`P${p.priority}: ${p.count}`}
+                  ></div>
+                ) : null
+              ))}
+            </div>
+            <ul class="priority-legend">
+              {stats.byPriority.map((p) => (
+                <li>
+                  <span class="priority-dot" style={`background: ${priorityColor[p.priority]}`}></span>
+                  P{p.priority} · {p.count}
+                </li>
+              ))}
+            </ul>
+
+            <h2 class="label-caps mt-5 mb-3">Work vs private</h2>
+            <div class="priority-stack">
+              <div
+                class="priority-stack-seg"
+                style={`--pct: ${(stats.workVsPrivate.work / Math.max(1, stats.totalDone)) * 100}%; background: var(--accent)`}
+                title={`Work: ${stats.workVsPrivate.work}`}
+              ></div>
+              <div
+                class="priority-stack-seg"
+                style={`--pct: ${(stats.workVsPrivate.private / Math.max(1, stats.totalDone)) * 100}%; background: var(--text-3)`}
+                title={`Private: ${stats.workVsPrivate.private}`}
+              ></div>
+            </div>
+            <ul class="priority-legend">
+              <li><span class="priority-dot" style="background: var(--accent)"></span>Work · {stats.workVsPrivate.work}</li>
+              <li><span class="priority-dot" style="background: var(--text-3)"></span>Private · {stats.workVsPrivate.private}</li>
+            </ul>
+          </section>
+        </div>
+
+        <section class="stats-panel mb-6">
+          <h2 class="label-caps mb-3">Fun facts</h2>
+          <ul class="fun-facts">
+            {stats.busiestDay && (
+              <li>
+                <strong>Busiest day:</strong> {formatDate(stats.busiestDay.date)}{' '}
+                ({stats.busiestDay.count} {stats.busiestDay.count === 1 ? 'task' : 'tasks'})
+              </li>
+            )}
+            {onTimeRate !== null && (
+              <li><strong>{onTimeRate}%</strong> of dated tasks finished on or before their due date</li>
+            )}
+            {stats.avgCompletionDays !== null && (
+              <li>
+                Tasks take <strong>{stats.avgCompletionDays.toFixed(1)} {stats.avgCompletionDays === 1 ? 'day' : 'days'}</strong> on average, start to done
+              </li>
+            )}
+          </ul>
+        </section>
+      </>
+    )}
+  </div>
+</AppLayout>

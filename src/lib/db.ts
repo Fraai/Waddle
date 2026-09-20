@@ -200,6 +200,13 @@ export async function listTasksByProject(db: D1Database, userId: number, project
   return results;
 }
 
+// Every task the user has ever created, done or open — the raw material
+// for the stats page. No date/status filter, unlike every other list query.
+export async function listAllTasks(db: D1Database, userId: number): Promise<Task[]> {
+  const { results } = await db.prepare('SELECT * FROM tasks WHERE user_id = ?').bind(userId).all<Task>();
+  return results;
+}
+
 export async function listOpenDatedTasks(db: D1Database, userId: number): Promise<Task[]> {
   const { results } = await db.prepare(
     `SELECT * FROM tasks WHERE user_id = ? AND done_at IS NULL AND due_date IS NOT NULL
