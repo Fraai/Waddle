@@ -15,8 +15,19 @@ Internal Todoist alternative for the Fraai Agency team, branded as "Waddle" for 
 - **Finished tasks leave the project view** — a project page only lists open tasks by default; done top-level (not sub-) tasks move into a "Completed" `<details>` disclosure at the bottom on next load. Subtasks still just strike through in place, like before.
 - **Recurring tasks** — simple interval repeat, no separate recurring-series concept (`lib/repeat.ts`). A task's `repeat_rule` (`"daily"` / `"weekly"` / `"monthly"` / `"every:N:days"`, editable only from the task detail modal) is copied onto a brand-new task created when you complete the current one — completing, deleting, or editing one occurrence never touches any other. A repeat rule with no due date is inert (nothing to roll the date forward from), so it just completes normally. `toggleTaskDone` returns whether it spawned one; the client reloads in that case rather than trying to work out where the new occurrence belongs in whatever list is on screen.
 - **Push notifications** — a due date *and* due time (`tasks.due_time`, edit-modal only) gets a real Web Push notification, works even with the app closed. See "Push notifications" below.
-- **Installable as a home-screen/dock app** — `public/manifest.json` + `public/icon*.png` (cropped/resized from `brand-assets/branding.jpeg`, the source brand photo — kept out of `public/` so it isn't deployed as dead weight; regenerate with Pillow if it ever changes, `sips` can resize but not re-crop precisely), linked from both `AppLayout.astro` and `login.astro`'s `<head>` (no shared layout between them, so the tags are duplicated by hand). `public/sw.js` exists only for push notifications (see below), not offline support — this is still an always-online tool otherwise.
+- **Installable as a home-screen/dock app** — `public/manifest.json` + `public/icon*.png`/`favicon-32.png`/`apple-touch-icon.png`, all rendered from the duck mascot SVG below and downsampled with Pillow, linked from both `AppLayout.astro` and `login.astro`'s `<head>` (no shared layout between them, so the tags are duplicated by hand). `public/sw.js` exists only for push notifications (see below), not offline support — this is still an always-online tool otherwise.
 - **Brand colour is `#f6a80a`** (an amber/orange) — `--accent` in `global.css`. Raw, it's only ~2:1 contrast against white, which fails WCAG for text/icons/outlines, so there's a second token, `--accent-ink` (`#946505` in light mode, same as `--accent` in dark mode where the raw colour already clears 9:1 against the dark background) for anything drawn *on* a light surface. Rule of thumb: solid fills (button backgrounds, the app icon) use `--accent`; text, borders, outlines, and icons use `--accent-ink`. `.btn--primary` uses dark text (`#1d1d1f`), not white, for the same contrast reason.
+- **Mascot is a duck** (the name: "get your ducks in a row"), flat-vector, `#f6a80a` body background with a `#fff8ec` cream duck. No `brand-assets/` folder anymore (removed along with the old company photo it held) — the SVG master lives only here, regenerate PNGs by rendering it and downsampling with Pillow (`Image.resize(..., Image.LANCZOS)`) to `favicon-32.png` (32×32), `apple-touch-icon.png` (180×180), `icon-192.png`/`icon-512.png`, and the `docs/screenshot.png`-style GitHub social preview (1280×640, uploaded manually at Settings → General → Social preview, no API for it):
+  ```svg
+  <svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+    <rect width="512" height="512" fill="#f6a80a"/>
+    <ellipse cx="266" cy="336" rx="146" ry="112" fill="#fff8ec"/>
+    <path d="M 210 300 Q 260 280 300 320 Q 260 350 210 340 Z" fill="#f3dfb8"/>
+    <circle cx="216" cy="182" r="92" fill="#fff8ec"/>
+    <path d="M 288 172 Q 372 158 366 200 Q 358 226 294 214 Q 280 200 288 172 Z" fill="#e08a1e"/>
+    <circle cx="238" cy="164" r="13" fill="#1d1d1f"/>
+  </svg>
+  ```
 
 ## Required secrets
 
