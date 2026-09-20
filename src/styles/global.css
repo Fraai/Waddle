@@ -445,12 +445,19 @@ html[data-task-filter="private"] [data-project-type="work"] {
 .task-main {
   display: flex;
   align-items: flex-start;
+  flex-wrap: wrap;
   gap: var(--space-2);
 }
 
 .task-title {
   flex: 1;
-  min-width: 0;
+  /* Was 0 — fine back when the row never wrapped (nothing else to push
+     off), but with .task-main's flex-wrap that let the title shrink to
+     nothing while a pill/badge on the same line held its ground, wrapping
+     the title one character per line in narrow columns (Week). A floor
+     means once the title can't shrink further, trailing badges are what
+     wrap to the next line instead. */
+  min-width: 5rem;
   font-size: 0.9125rem;
   line-height: 1.45;
   word-break: break-word;
