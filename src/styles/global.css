@@ -812,6 +812,19 @@ h2:hover > .icon-btn,
   color: var(--text);
 }
 
+/* A bordered alternative to .btn--primary — for secondary sign-in providers
+   on the login page, where a second solid-amber button next to the first
+   would read as two competing calls to action instead of one plus options. */
+.btn--secondary {
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  color: var(--text);
+}
+
+.btn--secondary:hover {
+  background: var(--row-hover);
+}
+
 .btn--submit {
   width: 1.9rem;
   height: 1.9rem;

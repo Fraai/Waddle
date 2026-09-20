@@ -2,6 +2,7 @@
  * WebCrypto-only auth utilities — zero Node.js built-ins, so this runs on
  * the Cloudflare Workers edge runtime.
  */
+import { provisionUser } from '../lib/users';
 
 function bytesToBase64(bytes: Uint8Array): string {
   return btoa(String.fromCharCode(...bytes));
@@ -120,12 +121,17 @@ export function getGoogleAuthUrl(
   return `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
 }
 
+export interface OAuthProfile {
+  email: string;
+  name: string | null;
+}
+
 export async function exchangeGoogleCode(
   code: string,
   clientId: string,
   clientSecret: string,
   redirectUri: string,
-): Promise<{ email: string; name: string } | null> {
+): Promise<OAuthProfile | null> {
   const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -151,4 +157,137 @@ export async function exchangeGoogleCode(
   };
   if (verified_email !== true) return null;
   return { email, name };
+}
+
+export function getGitHubAuthUrl(clientId: string, redirectUri: string, state: string): string {
+  const params = new URLSearchParams({
+    client_id: clientId,
+    redirect_uri: redirectUri,
+    // user:email, not just read:user — GitHub's /user endpoint omits email
+    // entirely when a user has it set private, which is common.
+    scope: 'read:user user:email',
+    state,
+  });
+  return `https://github.com/login/oauth/authorize?${params}`;
+}
+
+export async function exchangeGitHubCode(
+  code: string,
+  clientId: string,
+  clientSecret: string,
+  redirectUri: string,
+): Promise<OAuthProfile | null> {
+  const tokenRes = await fetch('https://github.com/login/oauth/access_token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/json' },
+    body: new URLSearchParams({
+      client_id: clientId,
+      client_secret: clientSecret,
+      code,
+      redirect_uri: redirectUri,
+    }),
+  });
+  if (!tokenRes.ok) return null;
+  const { access_token } = (await tokenRes.json()) as { access_token?: string };
+  if (!access_token) return null;
+
+  // GitHub's API 403s without a User-Agent header.
+  const headers = {
+    Authorization: `Bearer ${access_token}`,
+    Accept: 'application/vnd.github+json',
+    'User-Agent': 'waddle-app',
+  };
+  const [userRes, emailsRes] = await Promise.all([
+    fetch('https://api.github.com/user', { headers }),
+    fetch('https://api.github.com/user/emails', { headers }),
+  ]);
+  if (!userRes.ok || !emailsRes.ok) return null;
+  const user = (await userRes.json()) as { name: string | null };
+  const emails = (await emailsRes.json()) as { email: string; primary: boolean; verified: boolean }[];
+  // The domain allowlist check downstream is the real gate — this just picks
+  // which of the account's emails to check it against.
+  const primary = emails.find((e) => e.primary && e.verified);
+  if (!primary) return null;
+  return { email: primary.email, name: user.name };
+}
+
+export function getMicrosoftAuthUrl(
+  clientId: string, redirectUri: string, state: string, tenant: string,
+): string {
+  const params = new URLSearchParams({
+    client_id: clientId,
+    redirect_uri: redirectUri,
+    response_type: 'code',
+    response_mode: 'query',
+    scope: 'openid email profile User.Read',
+    state,
+  });
+  return `https://login.microsoftonline.com/${tenant}/oauth2/v2.0/authorize?${params}`;
+}
+
+export async function exchangeMicrosoftCode(
+  code: string,
+  clientId: string,
+  clientSecret: string,
+  redirectUri: string,
+  tenant: string,
+): Promise<OAuthProfile | null> {
+  const tokenRes = await fetch(`https://login.microsoftonline.com/${tenant}/oauth2/v2.0/token`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      client_id: clientId,
+      client_secret: clientSecret,
+      code,
+      redirect_uri: redirectUri,
+      grant_type: 'authorization_code',
+      scope: 'openid email profile User.Read',
+    }),
+  });
+  if (!tokenRes.ok) return null;
+  const { access_token } = (await tokenRes.json()) as { access_token?: string };
+  if (!access_token) return null;
+
+  const userRes = await fetch('https://graph.microsoft.com/v1.0/me', {
+    headers: { Authorization: `Bearer ${access_token}` },
+  });
+  if (!userRes.ok) return null;
+  const { mail, userPrincipalName, displayName } = (await userRes.json()) as {
+    mail: string | null;
+    userPrincipalName: string | null;
+    displayName: string | null;
+  };
+  // mail is null for some account types (e.g. certain guest/B2B setups) —
+  // userPrincipalName is always present and is the sign-in identifier there.
+  const email = mail ?? userPrincipalName;
+  if (!email) return null;
+  return { email, name: displayName };
+}
+
+// Validates the CSRF state cookie set by the provider's initiate route
+// matches what came back on the callback — identical for every provider.
+export function checkOAuthState(request: Request): { code: string } | null {
+  const url = new URL(request.url);
+  const code = url.searchParams.get('code');
+  const state = url.searchParams.get('state');
+  const cookies = parseCookies(request.headers.get('cookie'));
+  if (!code || !state || state !== cookies['oauth-state']) return null;
+  return { code };
+}
+
+// The shared tail of every provider's callback: gate by domain, provision
+// the user, and hand back a signed-in redirect — identical regardless of
+// which provider proved the email address.
+export async function completeOAuthLogin(
+  db: D1Database, jwtSecret: string, allowedDomain: string, origin: string, profile: OAuthProfile,
+): Promise<Response> {
+  if (!isAllowedEmail(profile.email, allowedDomain)) {
+    return Response.redirect(`${origin}/auth/error?reason=domain`, 302);
+  }
+  const user = await provisionUser(db, profile.email, profile.name);
+  const token = await signJWT({ sub: String(user.id), email: user.email, name: user.name }, jwtSecret);
+  return new Response(null, {
+    status: 302,
+    headers: { Location: `${origin}/app/today`, 'Set-Cookie': makeAuthCookie(token) },
+  });
 }

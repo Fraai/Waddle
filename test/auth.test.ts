@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { env } from 'cloudflare:test';
 import {
   signJWT,
   verifyJWT,
@@ -6,6 +7,8 @@ import {
   makeAuthCookie,
   clearAuthCookie,
   isAllowedEmail,
+  checkOAuthState,
+  completeOAuthLogin,
 } from '../src/utils/auth';
 
 const SECRET = 'a'.repeat(32);
@@ -143,5 +146,162 @@ describe('exchangeGoogleCode', () => {
 
     const profile = await exchangeGoogleCode('code', 'id', 'secret', 'https://todo.fraai.agency/api/auth/callback');
     expect(profile).toBeNull();
+  });
+});
+
+import { getGitHubAuthUrl, exchangeGitHubCode, getMicrosoftAuthUrl, exchangeMicrosoftCode } from '../src/utils/auth';
+
+describe('getGitHubAuthUrl', () => {
+  it('builds a GitHub OAuth consent URL requesting the user:email scope', () => {
+    const url = new URL(getGitHubAuthUrl(
+      'client-id', 'https://todo.fraai.agency/api/auth/callback/github', 'state-123',
+    ));
+    expect(url.origin + url.pathname).toBe('https://github.com/login/oauth/authorize');
+    expect(url.searchParams.get('client_id')).toBe('client-id');
+    expect(url.searchParams.get('redirect_uri')).toBe('https://todo.fraai.agency/api/auth/callback/github');
+    expect(url.searchParams.get('state')).toBe('state-123');
+    expect(url.searchParams.get('scope')).toBe('read:user user:email');
+  });
+});
+
+describe('exchangeGitHubCode', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('picks the primary, verified email from /user/emails', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ access_token: 'tok' }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ name: 'Sam' }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify([
+        { email: 'sam-secondary@fraai.agency', primary: false, verified: true },
+        { email: 'sam-unverified@fraai.agency', primary: true, verified: false },
+        { email: 'sam@fraai.agency', primary: true, verified: true },
+      ]), { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const profile = await exchangeGitHubCode('code', 'id', 'secret', 'https://todo.fraai.agency/api/auth/callback/github');
+    expect(profile).toEqual({ email: 'sam@fraai.agency', name: 'Sam' });
+  });
+
+  it('returns null when no email is both primary and verified', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ access_token: 'tok' }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ name: 'Sam' }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify([
+        { email: 'sam@fraai.agency', primary: true, verified: false },
+      ]), { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const profile = await exchangeGitHubCode('code', 'id', 'secret', 'https://todo.fraai.agency/api/auth/callback/github');
+    expect(profile).toBeNull();
+  });
+
+  it('returns null when the token exchange fails', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(new Response('bad request', { status: 400 })));
+    const profile = await exchangeGitHubCode('code', 'id', 'secret', 'https://todo.fraai.agency/api/auth/callback/github');
+    expect(profile).toBeNull();
+  });
+});
+
+describe('getMicrosoftAuthUrl', () => {
+  it('builds a Microsoft OAuth consent URL scoped to the given tenant', () => {
+    const url = new URL(getMicrosoftAuthUrl(
+      'client-id', 'https://todo.fraai.agency/api/auth/callback/microsoft', 'state-123', 'common',
+    ));
+    expect(url.origin + url.pathname).toBe('https://login.microsoftonline.com/common/oauth2/v2.0/authorize');
+    expect(url.searchParams.get('client_id')).toBe('client-id');
+    expect(url.searchParams.get('redirect_uri')).toBe('https://todo.fraai.agency/api/auth/callback/microsoft');
+    expect(url.searchParams.get('state')).toBe('state-123');
+    expect(url.searchParams.get('scope')).toBe('openid email profile User.Read');
+  });
+});
+
+describe('exchangeMicrosoftCode', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('exchanges a code for the user profile using mail', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ access_token: 'tok' }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        mail: 'sam@fraai.agency', userPrincipalName: 'sam_fraai.agency#EXT#@samtenant.onmicrosoft.com', displayName: 'Sam',
+      }), { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const profile = await exchangeMicrosoftCode(
+      'code', 'id', 'secret', 'https://todo.fraai.agency/api/auth/callback/microsoft', 'common',
+    );
+    expect(profile).toEqual({ email: 'sam@fraai.agency', name: 'Sam' });
+  });
+
+  it('falls back to userPrincipalName when mail is null', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ access_token: 'tok' }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        mail: null, userPrincipalName: 'sam@fraai.agency', displayName: 'Sam',
+      }), { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const profile = await exchangeMicrosoftCode(
+      'code', 'id', 'secret', 'https://todo.fraai.agency/api/auth/callback/microsoft', 'common',
+    );
+    expect(profile?.email).toBe('sam@fraai.agency');
+  });
+
+  it('returns null when the token exchange fails', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(new Response('bad request', { status: 400 })));
+    const profile = await exchangeMicrosoftCode(
+      'code', 'id', 'secret', 'https://todo.fraai.agency/api/auth/callback/microsoft', 'common',
+    );
+    expect(profile).toBeNull();
+  });
+});
+
+describe('checkOAuthState', () => {
+  const makeRequest = (query: string, cookie: string | null) => new Request(`https://todo.fraai.agency/api/auth/callback${query}`, {
+    headers: cookie ? { cookie } : {},
+  });
+
+  it('returns the code when state matches the cookie', () => {
+    const req = makeRequest('?code=abc&state=xyz', 'oauth-state=xyz');
+    expect(checkOAuthState(req)).toEqual({ code: 'abc' });
+  });
+
+  it('returns null when the state does not match the cookie', () => {
+    const req = makeRequest('?code=abc&state=xyz', 'oauth-state=different');
+    expect(checkOAuthState(req)).toBeNull();
+  });
+
+  it('returns null when code or state is missing', () => {
+    expect(checkOAuthState(makeRequest('?state=xyz', 'oauth-state=xyz'))).toBeNull();
+    expect(checkOAuthState(makeRequest('?code=abc', null))).toBeNull();
+  });
+});
+
+describe('completeOAuthLogin', () => {
+  it('rejects a profile outside the allowed domain without provisioning a user', async () => {
+    const res = await completeOAuthLogin(
+      env.DB, 'a'.repeat(32), 'fraai.agency', 'https://todo.fraai.agency', { email: 'sam@gmail.com', name: 'Sam' },
+    );
+    expect(res.status).toBe(302);
+    expect(res.headers.get('Location')).toBe('https://todo.fraai.agency/auth/error?reason=domain');
+  });
+
+  it('provisions the user and returns a signed-in redirect with an auth cookie', async () => {
+    const res = await completeOAuthLogin(
+      env.DB, 'a'.repeat(32), 'fraai.agency', 'https://todo.fraai.agency',
+      { email: 'multiprovider@fraai.agency', name: 'Sam' },
+    );
+    expect(res.status).toBe(302);
+    expect(res.headers.get('Location')).toBe('https://todo.fraai.agency/app/today');
+    const cookie = res.headers.get('Set-Cookie');
+    expect(cookie).toContain('auth-token=');
+    expect(cookie).toContain('HttpOnly');
+
+    const token = cookie!.match(/auth-token=([^;]+)/)![1];
+    const payload = await verifyJWT(token, 'a'.repeat(32));
+    expect(payload?.email).toBe('multiprovider@fraai.agency');
   });
 });

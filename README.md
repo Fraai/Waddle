@@ -62,17 +62,23 @@ id = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"                # from `wrangler kv names
 
 Also change `name` at the top of `wrangler.toml` to whatever you want your Worker called. **Then delete the whole `[route]` block.** That's what points the app at a custom domain (`todo.fraai.agency`), which you don't have. Without it, Cloudflare gives your Worker a free URL like `todo-app.<your-subdomain>.workers.dev` the moment you deploy, which is good enough to actually use. Point a real domain at it later if you want; Cloudflare's docs cover that, and it's unrelated to this app.
 
-### 3. Set up "Sign in with Google"
+### 3. Set up sign-in
 
-In [Google Cloud Console](https://console.cloud.google.com/apis/credentials): create a project if you don't have one, then **Create Credentials → OAuth client ID → Application type: Web application**. Add these under "Authorized redirect URIs" (swap in your actual `workers.dev` URL from step 2):
+Google is required; GitHub and Microsoft are optional extra sign-in buttons. Set up only what you want to offer, using your actual `workers.dev` URL from step 2 wherever you see `<your-app>`.
+
+**Google**: in [Google Cloud Console](https://console.cloud.google.com/apis/credentials), create a project if you don't have one, then **Create Credentials → OAuth client ID → Application type: Web application**. Add these under "Authorized redirect URIs":
 - `https://<your-app>.<your-subdomain>.workers.dev/api/auth/callback`
 - `http://localhost:4321/api/auth/callback`
 
-Save it and you'll get a client ID and client secret, needed in the next step.
+**GitHub** (optional): in GitHub → Settings → Developer settings → OAuth Apps → New OAuth App, set the callback URL to `https://<your-app>.<your-subdomain>.workers.dev/api/auth/callback/github`.
+
+**Microsoft** (optional): in the Azure Portal → Entra ID → App registrations → New registration, add a Web redirect URI: `https://<your-app>.<your-subdomain>.workers.dev/api/auth/callback/microsoft`.
+
+Each one gives you a client ID and client secret, needed in the next step.
 
 ### 4. Configure secrets
 
-Copy `.env.example` to `.dev.vars` and fill in real values: the Google client ID/secret from step 3, a random 32+ character string for `JWT_SECRET`, and your own email's domain for `ALLOWED_EMAIL_DOMAIN` (this is what restricts sign-in to your organization). See the comments in that file and `CLAUDE.md` for what everything else does; most of it is optional.
+Copy `.env.example` to `.dev.vars` and fill in real values: the Google client ID/secret from step 3, a random 32+ character string for `JWT_SECRET`, and your own email's domain for `ALLOWED_EMAIL_DOMAIN` (this is what restricts sign-in to your organization, for every provider). Add `AUTH_GITHUB_ID`/`AUTH_GITHUB_SECRET` and/or `AUTH_MICROSOFT_ID`/`AUTH_MICROSOFT_SECRET` only if you set those up in step 3; leaving a pair unset just hides that provider's button. See the comments in that file and `CLAUDE.md` for what everything else does; most of it is optional.
 
 `.dev.vars` only covers your local machine. For the live deployment, push each one individually. This prompts you to paste the value; it doesn't take it as a command argument:
 ```bash
@@ -80,6 +86,11 @@ npx wrangler secret put JWT_SECRET
 npx wrangler secret put AUTH_GOOGLE_ID
 npx wrangler secret put AUTH_GOOGLE_SECRET
 npx wrangler secret put ALLOWED_EMAIL_DOMAIN
+# Optional, only if you set up GitHub and/or Microsoft sign-in:
+npx wrangler secret put AUTH_GITHUB_ID
+npx wrangler secret put AUTH_GITHUB_SECRET
+npx wrangler secret put AUTH_MICROSOFT_ID
+npx wrangler secret put AUTH_MICROSOFT_SECRET
 ```
 
 ### 5. Run it

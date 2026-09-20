@@ -1,6 +1,6 @@
 import type { APIRoute } from 'astro';
 import { env } from 'cloudflare:workers';
-import { exchangeGoogleCode, checkOAuthState, completeOAuthLogin } from '../../../utils/auth';
+import { exchangeGitHubCode, checkOAuthState, completeOAuthLogin } from '../../../../utils/auth';
 
 export const GET: APIRoute = async ({ request }) => {
   const url = new URL(request.url);
@@ -9,8 +9,8 @@ export const GET: APIRoute = async ({ request }) => {
     return Response.redirect(`${url.origin}/auth/error?reason=state`, 302);
   }
 
-  const redirectUri = `${url.origin}/api/auth/callback`;
-  const profile = await exchangeGoogleCode(checked.code, env.AUTH_GOOGLE_ID, env.AUTH_GOOGLE_SECRET, redirectUri);
+  const redirectUri = `${url.origin}/api/auth/callback/github`;
+  const profile = await exchangeGitHubCode(checked.code, env.AUTH_GITHUB_ID, env.AUTH_GITHUB_SECRET, redirectUri);
   if (!profile) {
     return Response.redirect(`${url.origin}/auth/error?reason=exchange`, 302);
   }

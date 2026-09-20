@@ -5,7 +5,7 @@ Internal Todoist alternative for the Fraai Agency team, branded as "Waddle" for 
 ## What this app is
 
 - **Internal only** — no public registration.
-- **Google SSO** — restricted to one Workspace domain, set via the `ALLOWED_EMAIL_DOMAIN` secret (`fraai.agency` for this deployment). Non-allowed domains are rejected at `/api/auth/callback` with a redirect to `/auth/error?reason=domain`; see `src/utils/auth.ts`'s `isAllowedEmail`.
+- **Google, GitHub, and Microsoft SSO** — all restricted to one domain, set via the `ALLOWED_EMAIL_DOMAIN` secret (`fraai.agency` for this deployment); the domain check is the real gate for every provider, not just a consent-screen hint. Non-allowed domains are rejected at each provider's callback with a redirect to `/auth/error?reason=domain`; see `src/utils/auth.ts`'s `isAllowedEmail`. Google is the only one treated as required — GitHub and Microsoft are optional, additional sign-in options, gated on `AUTH_GITHUB_ID`/`AUTH_MICROSOFT_ID` being set (both unset by default; `login.astro` only shows a provider's button if its ID is configured). See "OAuth setup" below.
 - **Statistics** — `/app/stats` computes streaks, a GitHub-style completion heatmap, and breakdowns by weekday/hour/project/priority/work-vs-private, all server-side from every task the user has ever created (`lib/stats.ts`, unit tested). No client JS, no new dependencies.
 - **Personal, per-user data** — every user has their own projects/sections/tasks. No sharing, no assignment, no cross-user visibility. Every user gets an auto-created, un-renameable, un-deletable "Inbox" project on first login.
 - **Responsive down to phone width** — sidebar collapses into a hamburger-triggered drawer below 768px (CSS-only, via a `peer`-checked checkbox in `AppLayout.astro`; no JS). At 768px+, the sidebar can also be manually collapsed (⌘B, or the toggle buttons) — a separate, JS/localStorage-backed preference (`sidebar.ts` + the `data-sidebar-collapsed` attribute set on `<html>`), independent of the mobile drawer. English UI, no labels.
@@ -36,7 +36,10 @@ Internal Todoist alternative for the Fraai Agency team, branded as "Waddle" for 
 | `JWT_SECRET` | HS256 JWT signing (min 32 chars) |
 | `AUTH_GOOGLE_ID` | Google OAuth client ID |
 | `AUTH_GOOGLE_SECRET` | Google OAuth client secret |
-| `ALLOWED_EMAIL_DOMAIN` | Google Workspace domain allowed to sign in (no `@`, e.g. `fraai.agency`) |
+| `ALLOWED_EMAIL_DOMAIN` | Domain allowed to sign in via any provider (no `@`, e.g. `fraai.agency`) |
+| `AUTH_GITHUB_ID` / `AUTH_GITHUB_SECRET` | GitHub OAuth App credentials — optional, leave unset to hide the "Sign in with GitHub" button |
+| `AUTH_MICROSOFT_ID` / `AUTH_MICROSOFT_SECRET` | Azure AD (Entra) app registration credentials — optional, leave unset to hide the "Sign in with Microsoft" button |
+| `AUTH_MICROSOFT_TENANT` | Optional, defaults to `common` (any tenant) — set to a specific Entra tenant ID to restrict which org's accounts even reach the consent screen |
 | `MCP_TOKEN` | Bearer token for `/api/mcp` — optional, leave unset to disable it |
 | `MCP_USER_EMAIL` | Which existing user `MCP_TOKEN` authenticates as — optional, required if `MCP_TOKEN` is set |
 | `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` / `VAPID_SUBJECT` | Push notifications (see below) — optional, leave unset to hide the sidebar's "Notifications" toggle. Generate with the command in `.env.example`; `VAPID_SUBJECT` is a `mailto:` address |
@@ -72,11 +75,23 @@ A task with a due date *and* a due time (`tasks.due_time`, `"HH:MM"`, set from t
 - Editing a task's `dueDate`/`dueTime` clears `notified_at` (`db.updateTask`), so rescheduling re-arms the reminder.
 - A repeating task's next occurrence (see "Recurring tasks" above) inherits `dueTime` from the one just completed, but starts with `notified_at` unset (it's a new row) — so it'll notify again next time it's due.
 
-## Google OAuth setup
+## OAuth setup
 
-In Google Cloud Console, create an OAuth 2.0 Web Application credential with these authorized redirect URIs:
+Google is required; GitHub and Microsoft are optional — set up only the ones you want to offer.
+
+**Google** — in Google Cloud Console, create an OAuth 2.0 Web Application credential with these authorized redirect URIs:
 - `https://<your-domain>/api/auth/callback` (`https://todo.fraai.agency/api/auth/callback` for this deployment)
 - `http://localhost:4321/api/auth/callback`
+
+**GitHub** (optional) — in GitHub → Settings → Developer settings → OAuth Apps → New OAuth App, set the "Authorization callback URL" to:
+- `https://<your-domain>/api/auth/callback/github`
+- `http://localhost:4321/api/auth/callback/github` (GitHub OAuth Apps only allow one callback URL per app — use a second, dev-only OAuth App for local testing, or just test against the deployed URL)
+
+**Microsoft** (optional) — in the Azure Portal → Entra ID → App registrations → New registration, add a Web platform redirect URI:
+- `https://<your-domain>/api/auth/callback/microsoft`
+- `http://localhost:4321/api/auth/callback/microsoft`
+
+The client secret is under "Certificates & secrets" on the app registration (not the same as the client/application ID).
 
 ## DB binding
 
@@ -98,7 +113,8 @@ After any `package.json` change, regenerate the lockfile with a full wipe (`rm -
 
 - `src/middleware.ts` — JWT verification, route guard for `/app/*`, security response headers (CSP with a per-request nonce, `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy`)
 - `src/layouts/AppLayout.astro` — the sidebar shell every `/app/*` page renders into. Takes an optional `projects` prop — every current page already fetches its own project list for its own rendering, so it passes that straight through instead of making AppLayout query D1 a second time for the same rows. A new page should do the same (pass `projects={projects}`) rather than let AppLayout fall back to fetching it itself.
-- `src/utils/auth.ts` — Google OAuth helpers, JWT sign/verify, domain allowlist (`isAllowedEmail`, checked against `ALLOWED_EMAIL_DOMAIN`)
+- `src/utils/auth.ts` — Google/GitHub/Microsoft OAuth helpers, JWT sign/verify, domain allowlist (`isAllowedEmail`, checked against `ALLOWED_EMAIL_DOMAIN`), plus the shared `checkOAuthState`/`completeOAuthLogin` every provider's callback route calls into
+- `src/pages/api/auth/{google,github,microsoft}.ts` + `src/pages/api/auth/callback.ts` (Google) / `callback/{github,microsoft}.ts` — one initiate + one callback route per provider; Google's routes keep their original (non-nested) paths since that redirect URI is already registered in production, new providers use `/api/auth/callback/<provider>`
 - `src/lib/users.ts` — user + inbox-project auto-provisioning on login
 - `src/lib/db.ts` — all project/section/task queries, scoped to the acting user
 - `src/lib/dates.ts` — Today/Upcoming date-grouping (Europe/Brussels timezone)
