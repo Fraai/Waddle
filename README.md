@@ -1,34 +1,60 @@
-# todo.fraai.agency
+# Todo
 
-Internal Todoist alternative for the Fraai Agency team. Astro SSR on Cloudflare Workers, D1 for storage, Google SSO restricted to `@fraai.agency` accounts.
+A self-hosted Todoist alternative for a team: Astro SSR on Cloudflare Workers, D1 for storage, Google SSO restricted to one Workspace domain (yours — set via `ALLOWED_EMAIL_DOMAIN`, no forking required). This instance is deployed at todo.fraai.agency for the Fraai Agency team; the steps below deploy your own copy for your own org.
 
 ## Features
 
 - **Today / Upcoming / Week views** — overdue and due-today tasks, a rolling agenda grouped by date, and a 7-day board you can drag tasks across.
 - **Projects** — personal to each user, marked private or work (filterable from the sidebar), with a colour you can set per project and a readable URL (`/app/projects/fitness`, not `/app/projects/7`). Every user gets an un-renameable, un-deletable Inbox on first login.
-- **Sections, subtasks, descriptions, links** — sections group tasks within a project (drag to reorder); tasks can have subtasks, a free-text description, and a link, all editable from a detail modal.
+- **Sections, subtasks, descriptions, links, recurring tasks** — sections group tasks within a project (drag to reorder); tasks can have subtasks, a free-text description, a link, and a repeat rule, all editable from a detail modal.
+- **Push notifications** — a task with a due date and time sends a real Web Push notification, even with the app closed.
+- **Statistics** — completion streaks, a GitHub-style activity heatmap, and breakdowns by project/priority/day/hour.
 - **Installable** — has a manifest and icons, so it can be added to your home screen (iPhone/iPad) or dock (Mac) as a standalone app.
 - **MCP server** — `/api/mcp` exposes the app to Claude (Code, Desktop, or a custom connector) as tools for listing, creating, and completing tasks and projects. See `CLAUDE.md` for the tool list and setup.
 
-## Setup
+## Deploying your own instance
 
-```bash
-npm install
-cp .env.example .dev.vars   # fill in real values, see CLAUDE.md
-npm run db:migrate:local
-npm run dev
-```
+Requires a Cloudflare account (the free tier is enough) and a Google Cloud project for OAuth.
+
+1. **Fork/clone this repo, then install:**
+   ```bash
+   npm install
+   ```
+
+2. **Create your own D1 database and KV namespace** (this repo's `wrangler.toml` points at Fraai Agency's — you need your own):
+   ```bash
+   npx wrangler d1 create todo-app
+   npx wrangler kv namespace create SESSION
+   ```
+   Copy the printed `database_id` and KV `id` into `wrangler.toml` (replacing the existing ones), and change `name` and `[route].pattern` (or delete `[route]` to use the free `*.workers.dev` subdomain instead of a custom domain).
+
+3. **Set up Google OAuth** — in Google Cloud Console, create an OAuth 2.0 Web Application credential with these authorized redirect URIs:
+   - `https://<your-domain>/api/auth/callback`
+   - `http://localhost:4321/api/auth/callback`
+
+4. **Configure secrets** — copy `.env.example` to `.dev.vars` and fill in real values (see the comments in that file and `CLAUDE.md` for what each one does). `ALLOWED_EMAIL_DOMAIN` is what restricts sign-in to your org's Google Workspace domain. For production, push each one with `npx wrangler secret put <NAME>` instead of relying on `.dev.vars` (which is local-only and gitignored).
+
+5. **Apply migrations and run:**
+   ```bash
+   npm run db:migrate:local
+   npm run dev
+   ```
+   Once you're ready to ship: `npm run db:migrate:remote` (against production, before the first deploy that needs it) then `npm run deploy`.
 
 ## Commands
 
 ```bash
-npm run dev                # Astro dev server on http://localhost:4321
+npm run dev               # Astro dev server on http://localhost:4321
 npm run build              # Production build
 npm test                   # Vitest unit + DB tests (local D1, no Cloudflare account needed)
-npx wrangler dev           # Preview against a Cloudflare Worker runtime locally
+npx wrangler dev            # Preview against a Cloudflare Worker runtime locally
 npm run deploy             # Build and deploy to Cloudflare
 npm run db:migrate:local   # Apply migrations to the local D1 database
 npm run db:migrate:remote  # Apply migrations to production
 ```
 
-See `CLAUDE.md` for architecture, required secrets, Google OAuth setup, and the MCP tool reference.
+See `CLAUDE.md` for architecture, the full list of required secrets, and the MCP tool reference.
+
+## License
+
+MIT — see [LICENSE](LICENSE).

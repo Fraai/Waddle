@@ -1,11 +1,12 @@
 # CLAUDE.md — todo.fraai.agency
 
-Internal Todoist alternative for the Fraai Agency team. Astro SSR on Cloudflare Workers + D1.
+Internal Todoist alternative for the Fraai Agency team. Astro SSR on Cloudflare Workers + D1. Self-hostable for any org — see `README.md` for deploying your own instance.
 
 ## What this app is
 
 - **Internal only** — no public registration.
-- **Google SSO** — `@fraai.agency` accounts only. Non-allowed domains are rejected at `/api/auth/callback` with a redirect to `/auth/error?reason=domain`.
+- **Google SSO** — restricted to one Workspace domain, set via the `ALLOWED_EMAIL_DOMAIN` secret (`fraai.agency` for this deployment). Non-allowed domains are rejected at `/api/auth/callback` with a redirect to `/auth/error?reason=domain`; see `src/utils/auth.ts`'s `isAllowedEmail`.
+- **Statistics** — `/app/stats` computes streaks, a GitHub-style completion heatmap, and breakdowns by weekday/hour/project/priority/work-vs-private, all server-side from every task the user has ever created (`lib/stats.ts`, unit tested). No client JS, no new dependencies.
 - **Personal, per-user data** — every user has their own projects/sections/tasks. No sharing, no assignment, no cross-user visibility. Every user gets an auto-created, un-renameable, un-deletable "Inbox" project on first login.
 - **Responsive down to phone width** — sidebar collapses into a hamburger-triggered drawer below 768px (CSS-only, via a `peer`-checked checkbox in `AppLayout.astro`; no JS). At 768px+, the sidebar can also be manually collapsed (⌘B, or the toggle buttons) — a separate, JS/localStorage-backed preference (`sidebar.ts` + the `data-sidebar-collapsed` attribute set on `<html>`), independent of the mobile drawer. English UI, no labels.
 - **Every project is "private" or "work"** (`projects.type`, defaults to `work`) — toggled via the badge next to a project's name in the sidebar. The Inbox is exempt (no badge, `setProjectType` rejects it like rename/delete already did) — it's the catch-all, not a private/work project, so it and its tasks always show regardless of the filter. A sidebar segmented control (All/Work/Private) filters everything else by it: Today, Upcoming, and Week hide non-matching tasks, and the sidebar hides non-matching projects. Also a JS/localStorage preference (`data-task-filter` on `<html>`), same mechanism as the sidebar collapse. Project pages are *not* filtered — visiting one directly always shows its own tasks regardless of the ambient filter.
@@ -24,6 +25,7 @@ Internal Todoist alternative for the Fraai Agency team. Astro SSR on Cloudflare 
 | `JWT_SECRET` | HS256 JWT signing (min 32 chars) |
 | `AUTH_GOOGLE_ID` | Google OAuth client ID |
 | `AUTH_GOOGLE_SECRET` | Google OAuth client secret |
+| `ALLOWED_EMAIL_DOMAIN` | Google Workspace domain allowed to sign in (no `@`, e.g. `fraai.agency`) |
 | `MCP_TOKEN` | Bearer token for `/api/mcp` — optional, leave unset to disable it |
 | `MCP_USER_EMAIL` | Which existing user `MCP_TOKEN` authenticates as — optional, required if `MCP_TOKEN` is set |
 | `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` / `VAPID_SUBJECT` | Push notifications (see below) — optional, leave unset to hide the sidebar's "Notifications" toggle. Generate with the command in `.env.example`; `VAPID_SUBJECT` is a `mailto:` address |
@@ -40,8 +42,8 @@ Client config (Claude Code / Desktop, `~/.claude.json` or the app's MCP settings
 ```json
 {
   "mcpServers": {
-    "todo-fraai-agency": {
-      "url": "https://todo.fraai.agency/api/mcp",
+    "todo": {
+      "url": "https://<your-domain>/api/mcp",
       "headers": { "Authorization": "Bearer <MCP_TOKEN>" }
     }
   }
@@ -62,12 +64,12 @@ A task with a due date *and* a due time (`tasks.due_time`, `"HH:MM"`, set from t
 ## Google OAuth setup
 
 In Google Cloud Console, create an OAuth 2.0 Web Application credential with these authorized redirect URIs:
-- `https://todo.fraai.agency/api/auth/callback`
+- `https://<your-domain>/api/auth/callback` (`https://todo.fraai.agency/api/auth/callback` for this deployment)
 - `http://localhost:4321/api/auth/callback`
 
 ## DB binding
 
-`DB` — Cloudflare D1, bound in `wrangler.toml`. Apply migrations: `npm run db:migrate:local` (add `:remote` for production — remember to run this against production *before* deploying a migration that ships new code depending on it). `wrangler.toml`'s `database_id` points at the real, already-created `todo-fraai-agency` database.
+`DB` — Cloudflare D1, bound in `wrangler.toml`. Apply migrations: `npm run db:migrate:local` (add `:remote` for production — remember to run this against production *before* deploying a migration that ships new code depending on it). `wrangler.toml`'s `database_id` points at this deployment's own `todo-fraai-agency` D1 database — a new deployment needs its own (`npx wrangler d1 create ...`, see `README.md`).
 
 ## Dev commands
 
@@ -83,17 +85,18 @@ npm run deploy    # Build and deploy to Cloudflare
 
 - `src/middleware.ts` — JWT verification, route guard for `/app/*`, security response headers (CSP with a per-request nonce, `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy`)
 - `src/layouts/AppLayout.astro` — the sidebar shell every `/app/*` page renders into. Takes an optional `projects` prop — every current page already fetches its own project list for its own rendering, so it passes that straight through instead of making AppLayout query D1 a second time for the same rows. A new page should do the same (pass `projects={projects}`) rather than let AppLayout fall back to fetching it itself.
-- `src/utils/auth.ts` — Google OAuth helpers, JWT sign/verify, domain allowlist
+- `src/utils/auth.ts` — Google OAuth helpers, JWT sign/verify, domain allowlist (`isAllowedEmail`, checked against `ALLOWED_EMAIL_DOMAIN`)
 - `src/lib/users.ts` — user + inbox-project auto-provisioning on login
 - `src/lib/db.ts` — all project/section/task queries, scoped to the acting user
 - `src/lib/dates.ts` — Today/Upcoming date-grouping (Europe/Brussels timezone)
 - `src/lib/slug.ts` — derives a project's URL slug from its name (not persisted — see "Project URLs" above)
 - `src/lib/repeat.ts` — recurring-task rule parsing/labeling/next-date logic
 - `src/lib/push.ts` / `src/lib/notify-sweep.ts` — Web Push sending and the cron sweep (see "Push notifications" above)
+- `src/lib/stats.ts` — pure `computeStats` function behind `/app/stats` (see "What this app is" above)
 - `src/worker-entry.ts` — the real `wrangler.toml` `main`; wraps Astro's own Cloudflare handler to add the `scheduled` export the push notification cron trigger needs
 - `public/sw.js` — service worker, push notifications only, no offline caching
 - `src/actions/index.ts` — all mutations (Astro Actions)
-- `src/pages/app/` — Today, Upcoming, Week, and per-project views (`projects/[slug].astro`)
+- `src/pages/app/` — Today, Upcoming, Week, Statistics (`stats.astro`), and per-project views (`projects/[slug].astro`)
 - `src/pages/api/mcp.ts` — MCP server (see "MCP server" above)
 - `migrations/` — D1 schema (`0001_init.sql` base schema, `0002_unique_inbox_per_user.sql` adds the one-inbox-per-user constraint, `0003_add_task_description_href.sql` adds `tasks.description`/`tasks.href` edited via the task detail modal, `0004_add_project_type.sql` adds `projects.type` — see `src/scripts/task-edit.ts` and `src/scripts/sidebar.ts`, `0005_add_task_repeat_rule.sql` adds `tasks.repeat_rule` — see `lib/repeat.ts`, `0006_add_notifications.sql` adds `tasks.due_time`/`tasks.notified_at` and the `push_subscriptions` table)
 

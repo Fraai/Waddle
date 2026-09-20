@@ -1,3 +1,8 @@
+# Deploying your own instance? `name`, `[route]`, `database_id`, and the KV
+# `id` below are all this deployment's own (Fraai Agency) — replace them
+# with your own before deploying. See README.md's "Deploying your own
+# instance" for the exact `wrangler d1 create` / `wrangler kv namespace
+# create` commands.
 name = "todo-fraai-agency"
 main = "src/worker-entry.ts"
 compatibility_date = "2026-09-01"
