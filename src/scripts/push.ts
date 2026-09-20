@@ -41,10 +41,21 @@ if (button && label) {
     }
     const registration = await navigator.serviceWorker.register('/sw.js');
     await navigator.serviceWorker.ready;
-    const subscription = await registration.pushManager.subscribe({
-      userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(vapidKey),
-    });
+    let subscription: PushSubscription;
+    try {
+      subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(vapidKey),
+      });
+    } catch (err) {
+      // Was silently swallowed before (no catch here at all) — the button
+      // just sat there looking like nothing happened. Chrome's own message
+      // for this is usually specific enough to act on (e.g. a push-service
+      // registration failure, often caused by an extension or network
+      // policy blocking Google's push endpoints).
+      alert(`Couldn’t turn on notifications: ${err instanceof Error ? err.message : String(err)}`);
+      return;
+    }
     const json = subscription.toJSON();
     const { error } = await actions.subscribePush({
       endpoint: subscription.endpoint,
@@ -76,6 +87,11 @@ if (button && label) {
       } else {
         await subscribe();
       }
+    } catch (err) {
+      // Belt-and-suspenders — subscribe()/unsubscribe() already handle
+      // their own known failure points, but nothing here should ever fail
+      // silently with the button just going back to looking untouched.
+      alert(`Something went wrong: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
       button.disabled = false;
     }
