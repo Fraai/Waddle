@@ -24,6 +24,7 @@ interface Modal {
   hrefOpen: HTMLAnchorElement;
   projectSelect: HTMLSelectElement;
   dueInput: HTMLInputElement;
+  dueTimeInput: HTMLInputElement;
   prioritySelect: HTMLSelectElement;
   repeatSelect: HTMLSelectElement;
   repeatCustomInput: HTMLInputElement;
@@ -36,7 +37,7 @@ let modal: Modal | null = null;
 // currently open for, and what it looked like when opened, so submit can
 // diff against the original values and decide whether a reload is needed.
 let activeLi: HTMLElement | null = null;
-let baseline: { dueDate: string; priority: string; projectId: string; repeatRule: string } | null = null;
+let baseline: { dueDate: string; dueTime: string; priority: string; projectId: string; repeatRule: string } | null = null;
 
 // If a close is still fading out when a new one is requested (e.g. openTaskModal
 // force-finishing it before reopening), this finishes it immediately instead of
@@ -121,6 +122,15 @@ function buildModal(): Modal {
   const dueInput = document.createElement('input');
   dueInput.type = 'date';
   dueInput.className = 'field';
+  // A time only makes sense alongside a date — cleared automatically if the
+  // date is cleared (see the date input's own change listener below).
+  const dueTimeInput = document.createElement('input');
+  dueTimeInput.type = 'time';
+  dueTimeInput.className = 'field';
+  dueTimeInput.title = 'Notify at this time (needs notifications turned on)';
+  dueInput.addEventListener('change', () => {
+    if (!dueInput.value) dueTimeInput.value = '';
+  });
   const prioritySelect = document.createElement('select');
   prioritySelect.className = 'field';
   for (const p of [4, 3, 2, 1]) {
@@ -129,7 +139,7 @@ function buildModal(): Modal {
     opt.textContent = `P${p}`;
     prioritySelect.append(opt);
   }
-  metaRow.append(dueInput, prioritySelect);
+  metaRow.append(dueInput, dueTimeInput, prioritySelect);
 
   const repeatRow = document.createElement('div');
   repeatRow.className = 'task-modal-row';
@@ -229,6 +239,7 @@ function buildModal(): Modal {
       description: descriptionInput.value || null,
       href: hrefInput.value || null,
       dueDate: dueInput.value || null,
+      dueTime: dueTimeInput.value || null,
       priority: Number(prioritySelect.value),
       ...(projectChanged ? { projectId: Number(projectSelect.value) } : {}),
       ...(repeatRuleChanged ? { repeatRule } : {}),
@@ -257,13 +268,14 @@ function buildModal(): Modal {
     syncHrefBadge(li, hrefInput.value);
     li.dataset.repeatRule = repeatRule ?? '';
     syncRepeatBadge(li, repeatRule ?? '');
+    li.dataset.dueTime = dueTimeInput.value;
     saveBtn.disabled = false;
     deleteBtn.disabled = false;
     closeModal(dialog);
   });
 
   return {
-    dialog, titleInput, descriptionInput, hrefInput, hrefOpen, projectSelect, dueInput, prioritySelect,
+    dialog, titleInput, descriptionInput, hrefInput, hrefOpen, projectSelect, dueInput, dueTimeInput, prioritySelect,
     repeatSelect, repeatCustomInput, saveBtn, deleteBtn,
   };
 }
@@ -352,10 +364,11 @@ function openTaskModal(li: HTMLElement): void {
 
   activeLi = li;
   const dueDate = li.dataset.dueDate || '';
+  const dueTime = li.dataset.dueTime || '';
   const priority = li.dataset.priority || '4';
   const projectId = li.dataset.projectId || '';
   const repeatRule = li.dataset.repeatRule || '';
-  baseline = { dueDate, priority, projectId, repeatRule };
+  baseline = { dueDate, dueTime, priority, projectId, repeatRule };
 
   m.titleInput.value = titleEl.textContent ?? '';
   m.descriptionInput.value = li.dataset.description || '';
@@ -364,6 +377,7 @@ function openTaskModal(li: HTMLElement): void {
   m.hrefOpen.href = m.hrefInput.value;
   m.projectSelect.value = projectId;
   m.dueInput.value = dueDate;
+  m.dueTimeInput.value = dueTime;
   m.prioritySelect.value = priority;
   if (repeatRule) {
     applyRepeatRuleToInputs(repeatRule, m.repeatSelect, m.repeatCustomInput);

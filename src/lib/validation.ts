@@ -19,6 +19,10 @@ export const dateString = z.preprocess(
   (v) => (v === '' || v == null ? undefined : v),
   z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/, 'Must be a valid date (YYYY-MM-DD)').optional(),
 );
+export const timeString = z.preprocess(
+  (v) => (v === '' || v == null ? undefined : v),
+  z.string().trim().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Must be a valid time (HH:MM)').optional(),
+);
 
 export const projectType = z.enum(['private', 'work']);
 
@@ -103,6 +107,7 @@ export const updateTaskSchema = z.object({
   taskId: idParam,
   title: requiredText('Title is required').optional(),
   dueDate: dateString.nullable(),
+  dueTime: timeString.nullable(),
   priority: z.coerce.number().int().min(1).max(4).optional(),
   projectId: idParam.optional(),
   sectionId: idParam.nullable().optional(),
@@ -112,6 +117,13 @@ export const updateTaskSchema = z.object({
 });
 export const toggleTaskDoneSchema = z.object({ taskId: idParam });
 export const deleteTaskSchema = z.object({ taskId: idParam });
+
+export const subscribePushSchema = z.object({
+  endpoint: z.string().url(),
+  p256dh: z.string().min(1),
+  auth: z.string().min(1),
+});
+export const unsubscribePushSchema = z.object({ endpoint: z.string().url() });
 export const reorderTasksSchema = z.object({
   projectId: idParam,
   sectionId: idParam.nullable().optional(),

@@ -6,7 +6,7 @@ import { z } from 'zod';
 import * as db from '../../lib/db';
 import { getUserByEmail, type User } from '../../lib/users';
 import { todayISO, splitOverdueAndToday, groupUpcoming } from '../../lib/dates';
-import { descriptionField, hrefField, repeatRuleField } from '../../lib/validation';
+import { descriptionField, hrefField, repeatRuleField, timeString } from '../../lib/validation';
 
 // A single token maps to a single account (env.MCP_USER_EMAIL) — this is a
 // personal-automation tool, not a multi-tenant API. Using the same token
@@ -46,6 +46,7 @@ function taskView(task: db.Task) {
     description: task.description,
     href: task.href,
     dueDate: task.due_date,
+    dueTime: task.due_time,
     priority: task.priority,
     repeatRule: task.repeat_rule,
     done: task.done_at !== null,
@@ -171,6 +172,7 @@ function buildServer(user: User): McpServer {
         title: z.string().min(1).describe('Task title'),
         project: z.string().optional().describe('Project id or name — defaults to Inbox'),
         dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().describe('YYYY-MM-DD'),
+        dueTime: timeString.describe('HH:MM, 24h. Only takes effect if dueDate is also set, and if the user has notifications turned on — triggers a push notification at that time.'),
         priority: z.number().int().min(1).max(4).optional().describe('1 (urgent) to 4 (lowest, default)'),
         description: descriptionField,
         href: hrefField.describe('A link — a bare domain like "example.com" is fine, https:// is assumed'),
@@ -180,7 +182,7 @@ function buildServer(user: User): McpServer {
         ),
       },
     },
-    async ({ title, project, dueDate, priority, description, href, parentTaskId, repeatRule }) => {
+    async ({ title, project, dueDate, dueTime, priority, description, href, parentTaskId, repeatRule }) => {
       const resolved = await resolveProject(user.id, project);
       if (!resolved) return toolError(`No project matches "${project}".`);
       try {
@@ -191,6 +193,7 @@ function buildServer(user: User): McpServer {
           description: description ?? null,
           href: href ?? null,
           dueDate: dueDate ?? null,
+          dueTime: dueTime ?? null,
           priority,
           repeatRule: repeatRule ?? null,
         });

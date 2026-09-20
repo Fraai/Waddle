@@ -1,5 +1,5 @@
 name = "todo-fraai-agency"
-main = "@astrojs/cloudflare/entrypoints/server"
+main = "src/worker-entry.ts"
 compatibility_date = "2026-09-01"
 compatibility_flags = [ "nodejs_compat" ]
 
@@ -21,3 +21,8 @@ migrations_dir = "migrations"
 binding = "SESSION"
 id = "023179a11a59446aabd8e6799d27e066"
 
+# Push-notification sweep for tasks with a due_time — see worker-entry.ts
+# and lib/notify-sweep.ts. 5 minutes is granular enough for a due-time
+# reminder without hammering D1/the push services every request.
+[triggers]
+crons = ["*/5 * * * *"]

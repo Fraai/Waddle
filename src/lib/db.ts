@@ -169,8 +169,10 @@ export interface Task {
   description: string | null;
   href: string | null;
   due_date: string | null;
+  due_time: string | null;
   priority: number;
   repeat_rule: string | null;
+  notified_at: string | null;
   done_at: string | null;
   position: number;
   created_at: string;
@@ -185,6 +187,7 @@ export interface CreateTaskInput {
   description?: string | null;
   href?: string | null;
   dueDate?: string | null;
+  dueTime?: string | null;
   priority?: number;
   repeatRule?: string | null;
 }
@@ -226,12 +229,12 @@ export async function createTask(db: D1Database, userId: number, input: CreateTa
   const nextPosition = (row?.max ?? 0) + 1;
 
   const result = await db.prepare(
-    `INSERT INTO tasks (user_id, project_id, section_id, parent_task_id, title, description, href, due_date, priority, repeat_rule, position)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING *`,
+    `INSERT INTO tasks (user_id, project_id, section_id, parent_task_id, title, description, href, due_date, due_time, priority, repeat_rule, position)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING *`,
   ).bind(
     userId, input.projectId, input.sectionId ?? null, input.parentTaskId ?? null,
     input.title, input.description ?? null, input.href ?? null,
-    input.dueDate ?? null, input.priority ?? 4, input.repeatRule ?? null, nextPosition,
+    input.dueDate ?? null, input.dueTime ?? null, input.priority ?? 4, input.repeatRule ?? null, nextPosition,
   ).first<Task>();
   if (!result) throw new Error('Failed to create task');
   return result;
@@ -242,6 +245,7 @@ export interface UpdateTaskInput {
   description?: string | null;
   href?: string | null;
   dueDate?: string | null;
+  dueTime?: string | null;
   priority?: number;
   projectId?: number;
   sectionId?: number | null;
@@ -276,16 +280,25 @@ export async function updateTask(
     sectionId = section ? task.section_id : null;
   }
 
+  const nextDueDate = input.dueDate !== undefined ? input.dueDate : task.due_date;
+  const nextDueTime = input.dueTime !== undefined ? input.dueTime : task.due_time;
+  // Rescheduling (date or time) un-fires a notification that already went
+  // out, or clears the slot for one that hasn't yet — either way the old
+  // notified_at no longer describes the current due date/time.
+  const dueChanged = nextDueDate !== task.due_date || nextDueTime !== task.due_time;
+
   const updateThis = db.prepare(
-    `UPDATE tasks SET title = ?, description = ?, href = ?, due_date = ?, priority = ?, repeat_rule = ?, project_id = ?, section_id = ?, updated_at = datetime('now')
+    `UPDATE tasks SET title = ?, description = ?, href = ?, due_date = ?, due_time = ?, priority = ?, repeat_rule = ?, notified_at = ?, project_id = ?, section_id = ?, updated_at = datetime('now')
      WHERE id = ? AND user_id = ?`,
   ).bind(
     input.title ?? task.title,
     input.description !== undefined ? input.description : task.description,
     input.href !== undefined ? input.href : task.href,
-    input.dueDate !== undefined ? input.dueDate : task.due_date,
+    nextDueDate,
+    nextDueTime,
     input.priority ?? task.priority,
     input.repeatRule !== undefined ? input.repeatRule : task.repeat_rule,
+    dueChanged ? null : task.notified_at,
     projectId,
     sectionId,
     taskId, userId,
@@ -332,6 +345,7 @@ export async function toggleTaskDone(
       description: task.description,
       href: task.href,
       dueDate: nextDueDate(task.due_date, task.repeat_rule),
+      dueTime: task.due_time,
       priority: task.priority,
       repeatRule: task.repeat_rule,
     });
@@ -371,4 +385,62 @@ export async function reorderTasks(
     ).bind(sectionId, index + 1, id, projectId, userId),
   );
   await db.batch(statements);
+}
+
+// ==========================================================================
+// Push notifications
+// ==========================================================================
+
+// One row per subscribed browser/device — a user can have several (phone,
+// laptop, ...). Upserted on endpoint, since the browser hands back the same
+// endpoint for an already-subscribed device rather than minting a new one.
+export async function savePushSubscription(
+  db: D1Database, userId: number, endpoint: string, p256dh: string, auth: string,
+): Promise<void> {
+  await db.prepare(
+    `INSERT INTO push_subscriptions (user_id, endpoint, p256dh, auth) VALUES (?, ?, ?, ?)
+     ON CONFLICT(endpoint) DO UPDATE SET user_id = excluded.user_id, p256dh = excluded.p256dh, auth = excluded.auth`,
+  ).bind(userId, endpoint, p256dh, auth).run();
+}
+
+export async function deletePushSubscription(db: D1Database, userId: number, endpoint: string): Promise<void> {
+  await db.prepare('DELETE FROM push_subscriptions WHERE user_id = ? AND endpoint = ?').bind(userId, endpoint).run();
+}
+
+// No user scoping — called by the notification sweep (src/worker-entry.ts)
+// when a push service reports a subscription as gone (404/410), identified
+// only by the endpoint URL it was sent to.
+export async function deletePushSubscriptionByEndpoint(db: D1Database, endpoint: string): Promise<void> {
+  await db.prepare('DELETE FROM push_subscriptions WHERE endpoint = ?').bind(endpoint).run();
+}
+
+export interface DueTaskNotification extends Task {
+  endpoint: string;
+  p256dh: string;
+  auth: string;
+}
+
+// Cross-user (the sweep runs once for everyone, not per-request) — a task
+// with a due_time that has arrived or passed today, not yet notified, not
+// done, joined with every push subscription its owner has (so a task with
+// two subscribed devices yields two rows, one push each). A task with no
+// due_time never matches — there's nothing to compare "now" against.
+export async function listTasksDueForNotification(
+  db: D1Database, todayISO: string, nowHHMM: string,
+): Promise<DueTaskNotification[]> {
+  const { results } = await db.prepare(
+    `SELECT tasks.*, push_subscriptions.endpoint, push_subscriptions.p256dh, push_subscriptions.auth
+     FROM tasks
+     JOIN push_subscriptions ON push_subscriptions.user_id = tasks.user_id
+     WHERE tasks.done_at IS NULL
+       AND tasks.notified_at IS NULL
+       AND tasks.due_date = ?
+       AND tasks.due_time IS NOT NULL
+       AND tasks.due_time <= ?`,
+  ).bind(todayISO, nowHHMM).all<DueTaskNotification>();
+  return results;
+}
+
+export async function markTaskNotified(db: D1Database, taskId: number): Promise<void> {
+  await db.prepare(`UPDATE tasks SET notified_at = datetime('now') WHERE id = ?`).bind(taskId).run();
 }

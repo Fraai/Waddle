@@ -221,7 +221,22 @@ const projectHue = (id: number) => (id * 137.5) % 360;
         <input id="new-project" name="name" placeholder="New project" class="field w-full" required />
       </form>
 
-      <form method="POST" action="/api/auth/signout" class="mt-auto pt-3">
+      {env.VAPID_PUBLIC_KEY && (
+        <button
+          id="notifications-toggle"
+          type="button"
+          class="btn btn--ghost mt-auto w-full justify-start text-xs"
+          data-vapid-key={env.VAPID_PUBLIC_KEY}
+        >
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M8 2.5a3 3 0 0 0-3 3v2.2c0 .5-.18 1-.5 1.4L3.5 10.5h9l-1-1.4a2.3 2.3 0 0 1-.5-1.4V5.5a3 3 0 0 0-3-3Z" />
+            <path d="M6.5 12.5a1.5 1.5 0 0 0 3 0" />
+          </svg>
+          <span id="notifications-label">Notifications</span>
+        </button>
+      )}
+
+      <form method="POST" action="/api/auth/signout" class={env.VAPID_PUBLIC_KEY ? 'pt-1' : 'mt-auto pt-3'}>
         <button type="submit" class="btn btn--ghost w-full justify-start text-xs">Sign out</button>
       </form>
     </aside>
@@ -237,3 +252,4 @@ const projectHue = (id: number) => (id * 137.5) % 360;
   </body>
 </html>
 <script src="../scripts/sidebar.ts"></script>
+<script src="../scripts/push.ts"></script>

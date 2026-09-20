@@ -47,6 +47,7 @@ const taskProjectType = (task: { project_id: number }) => {
               data-due-date={task.due_date}
               data-description={task.description ?? ''}
               data-href={task.href ?? ''}
+              data-due-time={task.due_time ?? ''}
               data-repeat-rule={task.repeat_rule ?? ''}
               data-project-type={taskProjectType(task)}
               data-project-id={task.project_id}

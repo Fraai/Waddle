@@ -349,3 +349,49 @@ describe('listOpenDatedTasks', () => {
     expect(tasks.map((t) => t.id)).toEqual([sooner.id, later.id]);
   });
 });
+
+describe('push notifications', () => {
+  it('savePushSubscription upserts on endpoint, listTasksDueForNotification joins subscriptions, markTaskNotified excludes it after', async () => {
+    await db.savePushSubscription(env.DB, userId, 'https://push.example/abc', 'p256dh-key', 'auth-key');
+    // Re-subscribing the same endpoint (e.g. the browser handing back the
+    // same one) updates in place rather than erroring on the unique index.
+    await db.savePushSubscription(env.DB, userId, 'https://push.example/abc', 'p256dh-key-2', 'auth-key-2');
+
+    const due = await db.createTask(env.DB, userId, {
+      projectId, title: 'Standup', dueDate: '2026-03-10', dueTime: '09:00',
+    });
+    await db.createTask(env.DB, userId, { projectId, title: 'No time', dueDate: '2026-03-10' });
+    await db.createTask(env.DB, userId, { projectId, title: 'Later today', dueDate: '2026-03-10', dueTime: '18:00' });
+
+    const notifications = await db.listTasksDueForNotification(env.DB, '2026-03-10', '09:05');
+    expect(notifications).toHaveLength(1);
+    expect(notifications[0].id).toBe(due.id);
+    expect(notifications[0].p256dh).toBe('p256dh-key-2');
+
+    await db.markTaskNotified(env.DB, due.id);
+    const afterNotified = await db.listTasksDueForNotification(env.DB, '2026-03-10', '09:05');
+    expect(afterNotified).toHaveLength(0);
+  });
+
+  it('rescheduling a notified task\'s due date/time clears notified_at so it can fire again', async () => {
+    await db.savePushSubscription(env.DB, userId, 'https://push.example/xyz', 'p', 'a');
+    const task = await db.createTask(env.DB, userId, {
+      projectId, title: 'Reschedule me', dueDate: '2026-03-10', dueTime: '09:00',
+    });
+    await db.markTaskNotified(env.DB, task.id);
+    expect((await db.listTasksDueForNotification(env.DB, '2026-03-10', '09:05'))).toHaveLength(0);
+
+    await db.updateTask(env.DB, userId, task.id, { dueTime: '10:00' });
+    expect((await db.listTasksDueForNotification(env.DB, '2026-03-10', '10:05'))).toHaveLength(1);
+  });
+
+  it('deletePushSubscription removes only that user\'s subscription', async () => {
+    await db.savePushSubscription(env.DB, userId, 'https://push.example/mine', 'p', 'a');
+    await db.savePushSubscription(env.DB, otherUserId, 'https://push.example/theirs', 'p', 'a');
+    await db.deletePushSubscription(env.DB, userId, 'https://push.example/theirs');
+
+    await db.createTask(env.DB, userId, { projectId, title: 'Mine', dueDate: '2026-03-10', dueTime: '09:00' });
+    const notifications = await db.listTasksDueForNotification(env.DB, '2026-03-10', '09:05');
+    expect(notifications.map((n) => n.endpoint)).toEqual(['https://push.example/mine']);
+  });
+});

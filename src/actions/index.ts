@@ -7,6 +7,7 @@ import {
   setProjectColorSchema,
   createSectionSchema, renameSectionSchema, deleteSectionSchema, reorderSectionsSchema,
   createTaskSchema, updateTaskSchema, toggleTaskDoneSchema, deleteTaskSchema, reorderTasksSchema,
+  subscribePushSchema, unsubscribePushSchema,
 } from '../lib/validation';
 
 // Slugs aren't stored (see lib/slug.ts) — recomputed from the full project
@@ -160,6 +161,22 @@ export const server = {
     handler: async (input, context) => {
       const user = requireUser(context);
       await wrapNotFound(() => db.reorderTasks(env.DB, user.id, input.projectId, input.sectionId ?? null, input.orderedIds));
+      return { success: true };
+    },
+  }),
+  subscribePush: defineAction({
+    input: subscribePushSchema,
+    handler: async (input, context) => {
+      const user = requireUser(context);
+      await db.savePushSubscription(env.DB, user.id, input.endpoint, input.p256dh, input.auth);
+      return { success: true };
+    },
+  }),
+  unsubscribePush: defineAction({
+    input: unsubscribePushSchema,
+    handler: async (input, context) => {
+      const user = requireUser(context);
+      await db.deletePushSubscription(env.DB, user.id, input.endpoint);
       return { success: true };
     },
   }),

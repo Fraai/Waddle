@@ -759,6 +759,12 @@ h2:hover > .icon-btn,
   transform: scale(0.97);
 }
 
+.btn svg {
+  width: 0.9rem;
+  height: 0.9rem;
+  flex: none;
+}
+
 /* The only visible sign a create/save/rename is in flight — without this,
    disabling a control during a request looks identical to doing nothing. */
 .btn:disabled,
@@ -971,6 +977,7 @@ h2:hover > .icon-btn,
 .task-modal-row {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: var(--space-2);
 }
 

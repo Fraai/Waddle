@@ -7,6 +7,13 @@ export function todayISO(date: Date = new Date()): string {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Brussels' }).format(date);
 }
 
+// "HH:MM", 24h, Europe/Brussels — for comparing against tasks.due_time.
+export function nowHHMM(date: Date = new Date()): string {
+  return new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Europe/Brussels', hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+  }).format(date);
+}
+
 export interface TodayGroups {
   overdue: Task[];
   today: Task[];

@@ -18,6 +18,7 @@
   },
   "dependencies": {
     "@astrojs/cloudflare": "^14.0.2",
+    "@block65/webcrypto-web-push": "^2.0.0",
     "@modelcontextprotocol/sdk": "^1.30.0",
     "astro": "^7.0.4",
     "sortablejs": "^1.15.0",
