@@ -24,32 +24,76 @@ Astro SSR on Cloudflare Workers, D1 for storage, Google SSO restricted to one Wo
 
 ## Deploying your own instance
 
-Requires a Cloudflare account (the free tier is enough) and a Google Cloud project for OAuth.
+No prior Cloudflare experience needed — every piece is explained as you hit it. About 15–20 minutes, almost all of it waiting on web forms, not code.
 
-1. **Fork/clone this repo, then install:**
-   ```bash
-   npm install
-   ```
+**What you'll need**, all free:
+- A [Cloudflare account](https://dash.cloudflare.com/sign-up) — this is where the app actually runs (Cloudflare Workers is their serverless hosting; think "Vercel/Netlify, but also gives you a free database").
+- A [Google Cloud](https://console.cloud.google.com) account — only used to create the "Sign in with Google" credential, nothing else.
+- Node.js 22+ installed locally.
 
-2. **Create your own D1 database and KV namespace** (this repo's `wrangler.toml` points at Fraai Agency's — you need your own):
-   ```bash
-   npx wrangler d1 create todo-app
-   npx wrangler kv namespace create SESSION
-   ```
-   Copy the printed `database_id` and KV `id` into `wrangler.toml` (replacing the existing ones), and change `name` and `[route].pattern` (or delete `[route]` to use the free `*.workers.dev` subdomain instead of a custom domain).
+### 1. Get the code and log in to Cloudflare
 
-3. **Set up Google OAuth** — in Google Cloud Console, create an OAuth 2.0 Web Application credential with these authorized redirect URIs:
-   - `https://<your-domain>/api/auth/callback`
-   - `http://localhost:4321/api/auth/callback`
+```bash
+git clone <this-repo-url>
+cd todo.fraai.agency
+npm install
+npx wrangler login   # opens your browser to connect this CLI to your Cloudflare account
+```
+`wrangler` is Cloudflare's command-line tool for deploying and configuring Workers — it's already installed as part of `npm install`, so there's nothing extra to set up.
 
-4. **Configure secrets** — copy `.env.example` to `.dev.vars` and fill in real values (see the comments in that file and `CLAUDE.md` for what each one does). `ALLOWED_EMAIL_DOMAIN` is what restricts sign-in to your org's Google Workspace domain. For production, push each one with `npx wrangler secret put <NAME>` instead of relying on `.dev.vars` (which is local-only and gitignored).
+### 2. Create your own database and session store
 
-5. **Apply migrations and run:**
-   ```bash
-   npm run db:migrate:local
-   npm run dev
-   ```
-   Once you're ready to ship: `npm run db:migrate:remote` (against production, before the first deploy that needs it) then `npm run deploy`.
+This app needs two Cloudflare resources under your own account (this repo's `wrangler.toml` currently points at Fraai Agency's — you can't use those, you need your own, which is free to create):
+
+```bash
+npx wrangler d1 create todo-app
+npx wrangler kv namespace create SESSION
+```
+
+- **D1** is Cloudflare's hosted SQL database (think "free hosted SQLite") — every project and task lives here.
+- **KV** is a simple key-value store, used only to remember who's logged in.
+
+Each command prints a block of TOML like this — copy the `database_id` (from the first command) and `id` (from the second) into `wrangler.toml`, replacing the existing values on those same lines:
+
+```toml
+database_id = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"   # from `wrangler d1 create`
+id = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"                # from `wrangler kv namespace create`
+```
+
+Also change `name` at the top of `wrangler.toml` to whatever you want your Worker called. **Then delete the whole `[route]` block** — that's what points the app at a custom domain (`todo.fraai.agency`), which you don't have. Without it, Cloudflare gives your Worker a free URL like `todo-app.<your-subdomain>.workers.dev` the moment you deploy — good enough to actually use; you can point a real domain at it later if you want (Cloudflare's docs cover that, it's unrelated to this app).
+
+### 3. Set up "Sign in with Google"
+
+In [Google Cloud Console](https://console.cloud.google.com/apis/credentials): create a project if you don't have one, then **Create Credentials → OAuth client ID → Application type: Web application**. Add these under "Authorized redirect URIs" (swap in your actual `workers.dev` URL from step 2):
+- `https://<your-app>.<your-subdomain>.workers.dev/api/auth/callback`
+- `http://localhost:4321/api/auth/callback`
+
+Save it — you'll get a client ID and client secret, needed in the next step.
+
+### 4. Configure secrets
+
+Copy `.env.example` to `.dev.vars` and fill in real values — the Google client ID/secret from step 3, a random 32+ character string for `JWT_SECRET`, and your own email's domain for `ALLOWED_EMAIL_DOMAIN` (this is what restricts sign-in to your organization; see the comments in that file and `CLAUDE.md` for what everything else does — most of it is optional).
+
+`.dev.vars` only covers your local machine. For the live deployment, push each one individually — this prompts you to paste the value, it doesn't take it as a command argument:
+```bash
+npx wrangler secret put JWT_SECRET
+npx wrangler secret put AUTH_GOOGLE_ID
+npx wrangler secret put AUTH_GOOGLE_SECRET
+npx wrangler secret put ALLOWED_EMAIL_DOMAIN
+```
+
+### 5. Run it
+
+```bash
+npm run db:migrate:local
+npm run dev
+```
+Open `http://localhost:4321` and sign in. When you're ready to put it online for real:
+```bash
+npm run db:migrate:remote   # applies the database schema to your live D1 database
+npm run deploy              # builds and deploys the Worker
+```
+Wrangler prints your live URL when this finishes.
 
 ## Commands
 
