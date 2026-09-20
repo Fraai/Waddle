@@ -37,6 +37,7 @@ Internal Todoist alternative for the Fraai Agency team, branded as "Waddle" for 
 | `AUTH_GOOGLE_ID` | Google OAuth client ID |
 | `AUTH_GOOGLE_SECRET` | Google OAuth client secret |
 | `ALLOWED_EMAIL_DOMAIN` | Domain allowed to sign in via any provider (no `@`, e.g. `fraai.agency`) |
+| `APP_TAGLINE` | Subtitle under the app name on the sign-in page — optional, defaults to "The internal task list for your team." (`login.astro`) |
 | `AUTH_GITHUB_ID` / `AUTH_GITHUB_SECRET` | GitHub OAuth App credentials — optional, leave unset to hide the "Sign in with GitHub" button |
 | `AUTH_MICROSOFT_ID` / `AUTH_MICROSOFT_SECRET` | Azure AD (Entra) app registration credentials — optional, leave unset to hide the "Sign in with Microsoft" button |
 | `AUTH_MICROSOFT_TENANT` | Optional, defaults to `common` (any tenant) — set to a specific Entra tenant ID to restrict which org's accounts even reach the consent screen |

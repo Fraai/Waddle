@@ -42,7 +42,7 @@ import { env } from 'cloudflare:workers';
 
       <h1 class="page-title">Waddle</h1>
       <p class="mx-auto mt-2 max-w-[26ch] text-sm" style="color: var(--text-2)">
-        The internal task list for the Fraai Agency team.
+        {env.APP_TAGLINE ?? 'The internal task list for your team.'}
       </p>
 
       <a href="/api/auth/google" class="btn btn--primary mt-6 w-full">
