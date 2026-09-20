@@ -40,7 +40,7 @@ const days = groupWeek(tasks, weekDates);
   <div class="week-grid">
     {days.map((day, i) => (
       <section class="week-day">
-        <h2 class="label-caps mb-2" style={i === 0 ? 'color: var(--accent)' : undefined}>
+        <h2 class="label-caps mb-3" style={i === 0 ? 'color: var(--accent)' : undefined}>
           {i === 0 ? 'Today' : formatWeekday(day.date)} · {formatDayMonth(day.date)}
         </h2>
 
@@ -109,7 +109,7 @@ const days = groupWeek(tasks, weekDates);
         </ul>
 
         {inbox && (
-          <form method="POST" action={actions.createTask} class="composer mt-2" data-kind="week" data-date={day.date}>
+          <form method="POST" action={actions.createTask} class="composer mt-3" data-kind="week" data-date={day.date}>
             <input type="hidden" name="projectId" value={inbox.id} />
             <input type="hidden" name="dueDate" value={day.date} />
             <input name="title" placeholder="Add task" aria-label="Task title" required />

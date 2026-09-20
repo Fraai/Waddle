@@ -481,7 +481,7 @@ html[data-task-filter="private"] [data-project-type="work"] {
 .week-grid {
   display: grid;
   grid-template-columns: repeat(7, minmax(200px, 1fr));
-  gap: var(--space-4);
+  gap: var(--space-5);
   padding-bottom: var(--space-4);
   overflow-x: auto;
 }
@@ -490,6 +490,17 @@ html[data-task-filter="private"] [data-project-type="work"] {
   display: flex;
   flex-direction: column;
   min-width: 0;
+}
+
+/* Rows can wrap to a second line now (title, then a trailing badge/pill —
+   see .task-main's flex-wrap) — --space-2 was tuned for a single line and
+   reads as cramped once a row is two lines tall. */
+.week-day .task-row {
+  padding: var(--space-3);
+}
+
+.week-day .task-main {
+  gap: var(--space-2) var(--space-3);
 }
 
 /* A day with nothing due still needs to be a visible drop target — the
