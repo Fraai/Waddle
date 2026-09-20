@@ -20,7 +20,7 @@ export const GET: APIRoute = async ({ request }) => {
   if (!profile) {
     return Response.redirect(`${url.origin}/auth/error?reason=exchange`, 302);
   }
-  if (!isAllowedEmail(profile.email)) {
+  if (!isAllowedEmail(profile.email, env.ALLOWED_EMAIL_DOMAIN)) {
     return Response.redirect(`${url.origin}/auth/error?reason=domain`, 302);
   }
 

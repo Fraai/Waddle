@@ -6,7 +6,7 @@ export const GET: APIRoute = async ({ request }) => {
   const origin = new URL(request.url).origin;
   const redirectUri = `${origin}/api/auth/callback`;
   const state = crypto.randomUUID();
-  const url = getGoogleAuthUrl(env.AUTH_GOOGLE_ID, redirectUri, state);
+  const url = getGoogleAuthUrl(env.AUTH_GOOGLE_ID, redirectUri, state, env.ALLOWED_EMAIL_DOMAIN);
   return new Response(null, {
     status: 302,
     headers: {

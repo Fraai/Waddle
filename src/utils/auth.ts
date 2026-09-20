@@ -95,21 +95,27 @@ export function clearAuthCookie(): string {
   return `auth-token=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0; Secure`;
 }
 
-const ALLOWED_DOMAINS = ['@fraai.agency'];
-
-export function isAllowedEmail(email: string): boolean {
+// The org's Google Workspace domain (e.g. "fraai.agency", no "@") — set via
+// the ALLOWED_EMAIL_DOMAIN secret, not hardcoded, so this is deployable for
+// any organization without forking the code.
+export function isAllowedEmail(email: string, allowedDomain: string): boolean {
   const e = email.trim().toLowerCase();
-  return ALLOWED_DOMAINS.some((d) => e.endsWith(d));
+  return e.endsWith(`@${allowedDomain.trim().toLowerCase()}`);
 }
 
-export function getGoogleAuthUrl(clientId: string, redirectUri: string, state: string): string {
+export function getGoogleAuthUrl(
+  clientId: string, redirectUri: string, state: string, allowedDomain: string,
+): string {
   const params = new URLSearchParams({
     client_id: clientId,
     redirect_uri: redirectUri,
     response_type: 'code',
     scope: 'openid email profile',
     state,
-    hd: 'fraai.agency',
+    // Just a UI hint (pre-fills/restricts the account chooser) — the real
+    // enforcement is isAllowedEmail on the callback, since this can be
+    // bypassed client-side.
+    hd: allowedDomain,
   });
   return `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
 }

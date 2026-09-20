@@ -63,16 +63,16 @@ describe('cookie helpers', () => {
 });
 
 describe('isAllowedEmail', () => {
-  it('allows @fraai.agency addresses', () => {
-    expect(isAllowedEmail('sam@fraai.agency')).toBe(true);
+  it('allows addresses on the configured domain', () => {
+    expect(isAllowedEmail('sam@fraai.agency', 'fraai.agency')).toBe(true);
   });
 
-  it('is case-insensitive', () => {
-    expect(isAllowedEmail('Sam@Fraai.Agency')).toBe(true);
+  it('is case-insensitive on both the email and the configured domain', () => {
+    expect(isAllowedEmail('Sam@Fraai.Agency', 'FRAAI.AGENCY')).toBe(true);
   });
 
   it('rejects other domains', () => {
-    expect(isAllowedEmail('sam@gmail.com')).toBe(false);
+    expect(isAllowedEmail('sam@gmail.com', 'fraai.agency')).toBe(false);
   });
 });
 
@@ -81,7 +81,9 @@ import { vi, afterEach } from 'vitest';
 
 describe('getGoogleAuthUrl', () => {
   it('builds a Google OAuth consent URL with the given params', () => {
-    const url = new URL(getGoogleAuthUrl('client-id', 'https://todo.fraai.agency/api/auth/callback', 'state-123'));
+    const url = new URL(getGoogleAuthUrl(
+      'client-id', 'https://todo.fraai.agency/api/auth/callback', 'state-123', 'fraai.agency',
+    ));
     expect(url.origin + url.pathname).toBe('https://accounts.google.com/o/oauth2/v2/auth');
     expect(url.searchParams.get('client_id')).toBe('client-id');
     expect(url.searchParams.get('redirect_uri')).toBe('https://todo.fraai.agency/api/auth/callback');
