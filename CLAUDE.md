@@ -81,6 +81,8 @@ npx wrangler dev  # Preview against a Cloudflare Worker runtime locally
 npm run deploy    # Build and deploy to Cloudflare
 ```
 
+After any `package.json` change, regenerate the lockfile with a full wipe (`rm -rf node_modules package-lock.json && npm install`), not a plain `npm install` on top of the existing one, then verify with `rm -rf node_modules && npm ci`. `@cloudflare/vitest-pool-workers`'s bundled `wrangler` wants `@cloudflare/workers-types@^4.x` while everything else wants `^5.x`, and both packages publish near-daily dated versions — an incremental install can non-deterministically dedupe away the nested `4.x` copy the tree actually needs, which `npm install` tolerates but `npm ci` (what CI uses) correctly rejects as an out-of-sync lockfile. Bit CI twice before this was written down.
+
 ## Key files
 
 - `src/middleware.ts` — JWT verification, route guard for `/app/*`, security response headers (CSP with a per-request nonce, `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy`)
