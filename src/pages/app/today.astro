@@ -34,7 +34,7 @@ const taskProjectType = (task: { project_id: number }) => {
 
     {overdue.length > 0 && (
       <section class="mb-6">
-        <h2 class="label-caps mb-2" style="color: var(--danger)">Overdue</h2>
+        <h2 class="label-caps mb-3" style="color: var(--danger)">Overdue</h2>
         <ul class="task-list" data-remove-done>
           {overdue.map((task) => (
             <li
@@ -97,7 +97,7 @@ const taskProjectType = (task: { project_id: number }) => {
     )}
 
     <section>
-      <h2 class="label-caps mb-2">Due today</h2>
+      <h2 class="label-caps mb-3">Due today</h2>
       {dueToday.length === 0 ? (
         <p class="empty">Nothing due today.</p>
       ) : (
@@ -162,7 +162,7 @@ const taskProjectType = (task: { project_id: number }) => {
       )}
 
       {inbox && (
-        <form method="POST" action={actions.createTask} class="composer mt-2" data-kind="today">
+        <form method="POST" action={actions.createTask} class="composer mt-3" data-kind="today">
           <input type="hidden" name="projectId" value={inbox.id} />
           <input type="hidden" name="dueDate" value={today} />
           <input name="title" placeholder="Add task, due today" aria-label="Task title" required />

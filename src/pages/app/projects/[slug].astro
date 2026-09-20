@@ -58,7 +58,7 @@ const openCount = openTopLevel.length;
     {sectionGroups.map((group) => (
       <section class="mb-6" data-section-id={group.id ?? ''}>
         {group.name && (
-          <h2 class="label-caps mb-2 flex items-center gap-2 section-handle">
+          <h2 class="label-caps mb-3 flex items-center gap-2 section-handle">
             <span class="section-name">{group.name}</span>
             <button class="section-rename icon-btn" data-section-id={group.id} title={`Rename ${group.name}`}>
               <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
@@ -202,7 +202,7 @@ const openCount = openTopLevel.length;
           <p class="empty">Nothing here yet. Add your first task below.</p>
         )}
 
-        <form method="POST" action={actions.createTask} class="composer mt-2" data-kind="project">
+        <form method="POST" action={actions.createTask} class="composer mt-3" data-kind="project">
           <input type="hidden" name="projectId" value={projectId} />
           {group.id !== null && <input type="hidden" name="sectionId" value={group.id} />}
           <input name="title" placeholder="Add task" aria-label="Task title" required />
@@ -233,7 +233,7 @@ const openCount = openTopLevel.length;
     {doneTopLevel.length > 0 && (
       <details class="mt-8">
         <summary class="label-caps cursor-pointer select-none">Completed ({doneTopLevel.length})</summary>
-        <ul class="task-list mt-2">
+        <ul class="task-list mt-3">
           {doneTopLevel.map((task) => (
             <li
               data-task-id={task.id}

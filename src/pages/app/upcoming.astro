@@ -38,7 +38,7 @@ const taskProjectType = (task: { project_id: number }) => {
 
     {groups.map((group) => (
       <section class="mb-6" data-date={group.date}>
-        <h2 class="label-caps mb-2">{formatDateHeading(group.date, today)}</h2>
+        <h2 class="label-caps mb-3">{formatDateHeading(group.date, today)}</h2>
         <ul class="task-list" data-remove-done>
           {group.tasks.map((task) => (
             <li
@@ -101,7 +101,7 @@ const taskProjectType = (task: { project_id: number }) => {
     ))}
 
     {inbox && (
-      <form method="POST" action={actions.createTask} class="composer mt-2" data-kind="upcoming">
+      <form method="POST" action={actions.createTask} class="composer mt-3" data-kind="upcoming">
         <input type="hidden" name="projectId" value={inbox.id} />
         <input name="title" placeholder="Add task" aria-label="Task title" required />
         <input type="date" name="dueDate" aria-label="Due date" min={today} required />
