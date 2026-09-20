@@ -1,6 +1,16 @@
 # Todo
 
-A self-hosted Todoist alternative for a team: Astro SSR on Cloudflare Workers, D1 for storage, Google SSO restricted to one Workspace domain (yours — set via `ALLOWED_EMAIL_DOMAIN`, no forking required). This instance is deployed at todo.fraai.agency for the Fraai Agency team; the steps below deploy your own copy for your own org.
+A self-hosted Todoist alternative that talks to Claude natively — task management as an MCP server, not just a web app. Built by [Fraai Agency](https://fraai.agency), a web studio in Flanders, and used daily by the team in production since it shipped.
+
+![Statistics page: streaks, a GitHub-style activity heatmap, and day/hour breakdowns](docs/screenshot.png)
+
+Astro SSR on Cloudflare Workers, D1 for storage, Google SSO restricted to one Workspace domain of your choosing (no forking required — see below). Runs comfortably on Cloudflare's free tier for a small team, so self-hosting costs $0 where a per-seat SaaS plan doesn't.
+
+## Why this instead of Todoist/Things/Linear's task view
+
+- **It's an MCP server first.** `/api/mcp` exposes the same tasks Claude Code, Claude Desktop, or a custom connector can list, create, and complete — ask Claude what's due today, or have it file a task mid-conversation, without switching apps. No other open-source todo app does this natively.
+- **You own the data.** Cloudflare D1 in your own account, not a third party's database.
+- **It's not a toy.** Recurring tasks, real Web Push notifications (works with the app fully closed), drag-and-drop, subtasks, and a statistics page with a GitHub-style completion heatmap — the things a team actually asks for after a week of daily use.
 
 ## Features
 
@@ -58,3 +68,7 @@ See `CLAUDE.md` for architecture, the full list of required secrets, and the MCP
 ## License
 
 MIT — see [LICENSE](LICENSE).
+
+---
+
+Built by [Fraai Agency](https://fraai.agency) — we build and host Astro sites for clients in Flanders. This is one of our own internal tools, open-sourced as-is.
