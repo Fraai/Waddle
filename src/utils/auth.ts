@@ -96,7 +96,7 @@ export function clearAuthCookie(): string {
   return `auth-token=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0; Secure`;
 }
 
-// The org's Google Workspace domain (e.g. "fraai.agency", no "@") — set via
+// The org's Google Workspace domain (e.g. "example.com", no "@") — set via
 // the ALLOWED_EMAIL_DOMAIN secret, not hardcoded, so this is deployable for
 // any organization without forking the code.
 export function isAllowedEmail(email: string, allowedDomain: string): boolean {

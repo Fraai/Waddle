@@ -16,7 +16,7 @@ export default defineConfig(async () => {
       cloudflareTest({
         miniflare: {
           compatibilityDate: '2026-07-07',
-          d1Databases: { DB: 'todo-fraai-agency-test' },
+          d1Databases: { DB: 'waddle-test' },
           bindings: { TEST_MIGRATIONS: migrations, JWT_SECRET: 'test-secret-at-least-32-characters-long' },
         },
       }),

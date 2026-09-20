@@ -74,7 +74,7 @@ async function resolveProject(userId: number, ref: string | undefined): Promise<
 }
 
 function buildServer(user: User): McpServer {
-  const server = new McpServer({ name: 'todo-fraai-agency', version: '1.0.0' });
+  const server = new McpServer({ name: 'waddle', version: '1.0.0' });
 
   server.registerTool(
     'list_projects',
