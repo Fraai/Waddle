@@ -35,7 +35,7 @@ No prior Cloudflare experience needed: every piece is explained as you hit it. A
 
 ```bash
 git clone <this-repo-url>
-cd todo.fraai.agency
+cd <cloned-directory>   # whatever git named the folder it just created
 npm install
 npx wrangler login   # opens your browser to connect this CLI to your Cloudflare account
 ```
