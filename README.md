@@ -60,7 +60,7 @@ database_id = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"   # from `wrangler d1 creat
 id = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"                # from `wrangler kv namespace create`
 ```
 
-Also change `name` at the top of `wrangler.toml` to whatever you want your Worker called. **Then delete the whole `[route]` block.** That's what points the app at a custom domain (`todo.fraai.agency`), which you don't have. Without it, Cloudflare gives your Worker a free URL like `todo-app.<your-subdomain>.workers.dev` the moment you deploy, which is good enough to actually use. Point a real domain at it later if you want; Cloudflare's docs cover that, and it's unrelated to this app.
+Also change `name` at the top of `wrangler.toml` to whatever you want your Worker called. There's no custom domain configured, on purpose: `npm run deploy` gives your Worker a free URL like `todo-app.<your-subdomain>.workers.dev` the moment you deploy, which is good enough to actually use. Want a real domain instead? Set it via an environment variable at deploy time, not in the file: `WORKER_DOMAIN=your-domain.com npm run deploy`.
 
 ### 3. Set up sign-in
 

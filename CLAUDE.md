@@ -97,6 +97,10 @@ The client secret is under "Certificates & secrets" on the app registration (not
 
 `DB` — Cloudflare D1, bound in `wrangler.toml`. Apply migrations: `npm run db:migrate:local` (add `:remote` for production — remember to run this against production *before* deploying a migration that ships new code depending on it). `wrangler.toml`'s `database_id` points at this deployment's own `todo-fraai-agency` D1 database — a new deployment needs its own (`npx wrangler d1 create ...`, see `README.md`).
 
+## Custom domain
+
+Not in `wrangler.toml` — deploying without it gives a free `workers.dev` URL. This deployment's `todo.fraai.agency` binding is set at deploy time via `WORKER_DOMAIN=todo.fraai.agency npm run deploy` (see the `deploy` script in `package.json`), not committed anywhere. No application code hardcodes the domain either — every route/redirect URI is derived from the incoming request's own origin (`new URL(request.url).origin`), which is also why the Google/GitHub/Microsoft OAuth callback routes work unmodified in local dev against `localhost:4321`.
+
 ## Dev commands
 
 ```bash

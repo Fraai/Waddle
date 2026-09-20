@@ -1,16 +1,18 @@
-# Deploying your own instance? `name`, `[route]`, `database_id`, and the KV
-# `id` below are all this deployment's own (Fraai Agency) — replace them
-# with your own before deploying. See README.md's "Deploying your own
-# instance" for the exact `wrangler d1 create` / `wrangler kv namespace
-# create` commands.
+# Deploying your own instance? `name`, `database_id`, and the KV `id` below
+# are all this deployment's own (Fraai Agency) — replace them with your own
+# before deploying. See README.md's "Deploying your own instance" for the
+# exact `wrangler d1 create` / `wrangler kv namespace create` commands.
+#
+# No custom domain is configured here on purpose — `npm run deploy` gives
+# every deployment a free workers.dev URL by default. To bind a custom
+# domain instead, set WORKER_DOMAIN in your shell before deploying, e.g.
+# `WORKER_DOMAIN=todo.example.com npm run deploy` (see the deploy script in
+# package.json). Not a secret, so it isn't in .dev.vars/wrangler secret —
+# it's a deploy-time flag, not something the Worker reads at runtime.
 name = "todo-fraai-agency"
 main = "src/worker-entry.ts"
 compatibility_date = "2026-09-01"
 compatibility_flags = [ "nodejs_compat" ]
-
-[route]
-pattern = "todo.fraai.agency"
-custom_domain = true
 
 [assets]
 directory = "./dist/client"
