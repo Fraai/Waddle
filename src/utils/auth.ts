@@ -222,7 +222,7 @@ export function getMicrosoftAuthUrl(
     scope: 'openid email profile User.Read',
     state,
   });
-  return `https://login.microsoftonline.com/${tenant}/oauth2/v2.0/authorize?${params}`;
+  return `https://login.microsoftonline.com/${encodeURIComponent(tenant)}/oauth2/v2.0/authorize?${params}`;
 }
 
 export async function exchangeMicrosoftCode(
@@ -232,7 +232,7 @@ export async function exchangeMicrosoftCode(
   redirectUri: string,
   tenant: string,
 ): Promise<OAuthProfile | null> {
-  const tokenRes = await fetch(`https://login.microsoftonline.com/${tenant}/oauth2/v2.0/token`, {
+  const tokenRes = await fetch(`https://login.microsoftonline.com/${encodeURIComponent(tenant)}/oauth2/v2.0/token`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({

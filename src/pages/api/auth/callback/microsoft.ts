@@ -4,6 +4,9 @@ import { exchangeMicrosoftCode, checkOAuthState, completeOAuthLogin } from '../.
 
 export const GET: APIRoute = async ({ request }) => {
   const url = new URL(request.url);
+  if (!env.AUTH_MICROSOFT_ID) {
+    return new Response('Microsoft sign-in is not configured', { status: 404 });
+  }
   const checked = checkOAuthState(request);
   if (!checked) {
     return Response.redirect(`${url.origin}/auth/error?reason=state`, 302);

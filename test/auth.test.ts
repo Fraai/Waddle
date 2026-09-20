@@ -215,6 +215,13 @@ describe('getMicrosoftAuthUrl', () => {
     expect(url.searchParams.get('state')).toBe('state-123');
     expect(url.searchParams.get('scope')).toBe('openid email profile User.Read');
   });
+
+  it('URL-encodes the tenant into the path so it cannot inject an extra path segment', () => {
+    const url = getMicrosoftAuthUrl(
+      'client-id', 'https://todo.fraai.agency/api/auth/callback/microsoft', 'state-123', 'weird/tenant?x=1',
+    );
+    expect(url).toContain('/weird%2Ftenant%3Fx%3D1/oauth2/v2.0/authorize');
+  });
 });
 
 describe('exchangeMicrosoftCode', () => {
