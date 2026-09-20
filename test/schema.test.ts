@@ -12,7 +12,7 @@ describe('schema', () => {
 
   it('lets you insert a user, an inbox project, and a task referencing both', async () => {
     const user = await env.DB.prepare('INSERT INTO users (email) VALUES (?) RETURNING *')
-      .bind('test@fraai.agency')
+      .bind('test@example.com')
       .first<{ id: number }>();
     const project = await env.DB.prepare(
       'INSERT INTO projects (user_id, name, is_inbox) VALUES (?, ?, 1) RETURNING *'

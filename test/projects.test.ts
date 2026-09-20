@@ -33,10 +33,10 @@ let otherUserId: number;
 
 beforeEach(async () => {
   const user = await env.DB.prepare('INSERT INTO users (email) VALUES (?) RETURNING *')
-    .bind(`user-${crypto.randomUUID()}@fraai.agency`).first<{ id: number }>();
+    .bind(`user-${crypto.randomUUID()}@example.com`).first<{ id: number }>();
   userId = user!.id;
   const other = await env.DB.prepare('INSERT INTO users (email) VALUES (?) RETURNING *')
-    .bind(`other-${crypto.randomUUID()}@fraai.agency`).first<{ id: number }>();
+    .bind(`other-${crypto.randomUUID()}@example.com`).first<{ id: number }>();
   otherUserId = other!.id;
 });
 
