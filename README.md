@@ -1,34 +1,34 @@
 # Todo
 
-A self-hosted Todoist alternative that talks to Claude natively — task management as an MCP server, not just a web app. Built by [Fraai Agency](https://fraai.agency), a web studio in Flanders, and used daily by the team in production since it shipped.
+A self-hosted Todoist alternative that talks to Claude natively: task management as an MCP server, not just a web app. Built by [Fraai Agency](https://fraai.agency), a web studio in Flanders, and used daily by the team in production since it shipped.
 
 ![Statistics page: streaks, a GitHub-style activity heatmap, and day/hour breakdowns](docs/screenshot.png)
 
-Astro SSR on Cloudflare Workers, D1 for storage, Google SSO restricted to one Workspace domain of your choosing (no forking required — see below). Runs comfortably on Cloudflare's free tier for a small team, so self-hosting costs $0 where a per-seat SaaS plan doesn't.
+Astro SSR on Cloudflare Workers, D1 for storage, Google SSO restricted to one Workspace domain of your choosing (no forking required, see below). Runs comfortably on Cloudflare's free tier for a small team, so self-hosting costs $0 where a per-seat SaaS plan doesn't.
 
 ## Why this instead of Todoist/Things/Linear's task view
 
-- **It's an MCP server first.** `/api/mcp` exposes the same tasks Claude Code, Claude Desktop, or a custom connector can list, create, and complete — ask Claude what's due today, or have it file a task mid-conversation, without switching apps. No other open-source todo app does this natively.
+- **It's an MCP server first.** `/api/mcp` exposes the same tasks to Claude Code, Claude Desktop, or a custom connector, which can list, create, and complete them. Ask Claude what's due today, or have it file a task mid-conversation, without switching apps. No other open-source todo app does this natively.
 - **You own the data.** Cloudflare D1 in your own account, not a third party's database.
-- **It's not a toy.** Recurring tasks, real Web Push notifications (works with the app fully closed), drag-and-drop, subtasks, and a statistics page with a GitHub-style completion heatmap — the things a team actually asks for after a week of daily use.
+- **It's not a toy.** Recurring tasks, real Web Push notifications (works with the app fully closed), drag-and-drop, subtasks, and a statistics page with a GitHub-style completion heatmap. These are the things a team actually asks for after a week of daily use, not launch-day extras.
 
 ## Features
 
-- **Today / Upcoming / Week views** — overdue and due-today tasks, a rolling agenda grouped by date, and a 7-day board you can drag tasks across.
-- **Projects** — personal to each user, marked private or work (filterable from the sidebar), with a colour you can set per project and a readable URL (`/app/projects/fitness`, not `/app/projects/7`). Every user gets an un-renameable, un-deletable Inbox on first login.
-- **Sections, subtasks, descriptions, links, recurring tasks** — sections group tasks within a project (drag to reorder); tasks can have subtasks, a free-text description, a link, and a repeat rule, all editable from a detail modal.
-- **Push notifications** — a task with a due date and time sends a real Web Push notification, even with the app closed.
-- **Statistics** — completion streaks, a GitHub-style activity heatmap, and breakdowns by project/priority/day/hour.
-- **Installable** — has a manifest and icons, so it can be added to your home screen (iPhone/iPad) or dock (Mac) as a standalone app.
-- **MCP server** — `/api/mcp` exposes the app to Claude (Code, Desktop, or a custom connector) as tools for listing, creating, and completing tasks and projects. See `CLAUDE.md` for the tool list and setup.
+- **Today / Upcoming / Week views.** Overdue and due-today tasks, a rolling agenda grouped by date, and a 7-day board you can drag tasks across.
+- **Projects**, personal to each user and marked private or work (filterable from the sidebar), with a colour you can set per project and a readable URL (`/app/projects/fitness`, not `/app/projects/7`). Every user gets an un-renameable, un-deletable Inbox on first login.
+- **Sections, subtasks, descriptions, links, recurring tasks.** Sections group tasks within a project (drag to reorder); tasks can have subtasks, a free-text description, a link, and a repeat rule, all editable from a detail modal.
+- **Push notifications.** A task with a due date and time sends a real Web Push notification, even with the app closed.
+- **Statistics**: completion streaks, a GitHub-style activity heatmap, and breakdowns by project, priority, day, and hour.
+- **Installable.** Has a manifest and icons, so it can be added to your home screen (iPhone/iPad) or dock (Mac) as a standalone app.
+- **MCP server.** `/api/mcp` exposes the app to Claude (Code, Desktop, or a custom connector) as tools for listing, creating, and completing tasks and projects. See `CLAUDE.md` for the tool list and setup.
 
 ## Deploying your own instance
 
-No prior Cloudflare experience needed — every piece is explained as you hit it. About 15–20 minutes, almost all of it waiting on web forms, not code.
+No prior Cloudflare experience needed: every piece is explained as you hit it. About 15-20 minutes, almost all of it waiting on web forms, not code.
 
 **What you'll need**, all free:
-- A [Cloudflare account](https://dash.cloudflare.com/sign-up) — this is where the app actually runs (Cloudflare Workers is their serverless hosting; think "Vercel/Netlify, but also gives you a free database").
-- A [Google Cloud](https://console.cloud.google.com) account — only used to create the "Sign in with Google" credential, nothing else.
+- A [Cloudflare account](https://dash.cloudflare.com/sign-up). This is where the app actually runs (Cloudflare Workers is their serverless hosting; think "Vercel/Netlify, but also gives you a free database").
+- A [Google Cloud](https://console.cloud.google.com) account, only used to create the "Sign in with Google" credential, nothing else.
 - Node.js 22+ installed locally.
 
 ### 1. Get the code and log in to Cloudflare
@@ -39,28 +39,28 @@ cd todo.fraai.agency
 npm install
 npx wrangler login   # opens your browser to connect this CLI to your Cloudflare account
 ```
-`wrangler` is Cloudflare's command-line tool for deploying and configuring Workers — it's already installed as part of `npm install`, so there's nothing extra to set up.
+`wrangler` is Cloudflare's command-line tool for deploying and configuring Workers. It's already installed as part of `npm install`, so there's nothing extra to set up.
 
 ### 2. Create your own database and session store
 
-This app needs two Cloudflare resources under your own account (this repo's `wrangler.toml` currently points at Fraai Agency's — you can't use those, you need your own, which is free to create):
+This app needs two Cloudflare resources under your own account. This repo's `wrangler.toml` points at Fraai Agency's own database, which you don't have access to, so you'll create your own (also free):
 
 ```bash
 npx wrangler d1 create todo-app
 npx wrangler kv namespace create SESSION
 ```
 
-- **D1** is Cloudflare's hosted SQL database (think "free hosted SQLite") — every project and task lives here.
+- **D1** is Cloudflare's hosted SQL database (think "free hosted SQLite"). Every project and task lives here.
 - **KV** is a simple key-value store, used only to remember who's logged in.
 
-Each command prints a block of TOML like this — copy the `database_id` (from the first command) and `id` (from the second) into `wrangler.toml`, replacing the existing values on those same lines:
+Each command prints a block of TOML like this. Copy the `database_id` (from the first command) and `id` (from the second) into `wrangler.toml`, replacing the existing values on those same lines:
 
 ```toml
 database_id = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"   # from `wrangler d1 create`
 id = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"                # from `wrangler kv namespace create`
 ```
 
-Also change `name` at the top of `wrangler.toml` to whatever you want your Worker called. **Then delete the whole `[route]` block** — that's what points the app at a custom domain (`todo.fraai.agency`), which you don't have. Without it, Cloudflare gives your Worker a free URL like `todo-app.<your-subdomain>.workers.dev` the moment you deploy — good enough to actually use; you can point a real domain at it later if you want (Cloudflare's docs cover that, it's unrelated to this app).
+Also change `name` at the top of `wrangler.toml` to whatever you want your Worker called. **Then delete the whole `[route]` block.** That's what points the app at a custom domain (`todo.fraai.agency`), which you don't have. Without it, Cloudflare gives your Worker a free URL like `todo-app.<your-subdomain>.workers.dev` the moment you deploy, which is good enough to actually use. Point a real domain at it later if you want; Cloudflare's docs cover that, and it's unrelated to this app.
 
 ### 3. Set up "Sign in with Google"
 
@@ -68,13 +68,13 @@ In [Google Cloud Console](https://console.cloud.google.com/apis/credentials): cr
 - `https://<your-app>.<your-subdomain>.workers.dev/api/auth/callback`
 - `http://localhost:4321/api/auth/callback`
 
-Save it — you'll get a client ID and client secret, needed in the next step.
+Save it and you'll get a client ID and client secret, needed in the next step.
 
 ### 4. Configure secrets
 
-Copy `.env.example` to `.dev.vars` and fill in real values — the Google client ID/secret from step 3, a random 32+ character string for `JWT_SECRET`, and your own email's domain for `ALLOWED_EMAIL_DOMAIN` (this is what restricts sign-in to your organization; see the comments in that file and `CLAUDE.md` for what everything else does — most of it is optional).
+Copy `.env.example` to `.dev.vars` and fill in real values: the Google client ID/secret from step 3, a random 32+ character string for `JWT_SECRET`, and your own email's domain for `ALLOWED_EMAIL_DOMAIN` (this is what restricts sign-in to your organization). See the comments in that file and `CLAUDE.md` for what everything else does; most of it is optional.
 
-`.dev.vars` only covers your local machine. For the live deployment, push each one individually — this prompts you to paste the value, it doesn't take it as a command argument:
+`.dev.vars` only covers your local machine. For the live deployment, push each one individually. This prompts you to paste the value; it doesn't take it as a command argument:
 ```bash
 npx wrangler secret put JWT_SECRET
 npx wrangler secret put AUTH_GOOGLE_ID
@@ -111,8 +111,8 @@ See `CLAUDE.md` for architecture, the full list of required secrets, and the MCP
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT, see [LICENSE](LICENSE).
 
 ---
 
-Built by [Fraai Agency](https://fraai.agency) — we build and host Astro sites for clients in Flanders. This is one of our own internal tools, open-sourced as-is.
+Built by [Fraai Agency](https://fraai.agency). We build and host Astro sites for clients in Flanders; this is one of our own internal tools, open-sourced as-is.
