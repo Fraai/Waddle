@@ -333,33 +333,6 @@ button.project-dot:hover {
   transform: scale(1.3);
 }
 
-/* Always visible, like .task-href-badge — the point is to see a project's
-   type at a glance, not to hunt for it on hover. */
-.project-type-badge {
-  display: grid;
-  place-items: center;
-  flex: none;
-  width: 1.5rem;
-  height: 1.5rem;
-  border-radius: var(--r-sm);
-  color: var(--text-3);
-  transition: background var(--fast) var(--ease), color var(--fast) var(--ease);
-}
-
-.project-type-badge svg {
-  width: 0.8rem;
-  height: 0.8rem;
-}
-
-.project-type-badge:hover {
-  background: var(--row-hover);
-  color: var(--text);
-}
-
-.project-type-badge[data-type="private"] {
-  color: var(--p2);
-}
-
 /* ==========================================================================
    Private/work filter — a per-browser preference (see sidebar.ts), applied
    purely by hiding whatever carries the non-matching data-project-type.
@@ -648,33 +621,6 @@ h2:hover > .icon-btn,
    is all that's ever needed. */
 .project-row--child {
   padding-left: var(--space-4);
-}
-
-/* A native <select> styled to sit quietly among the icon-btns rather than
-   read as a distinct form control — the row already has plenty going on. */
-/* Fixed narrow width (not opacity-hidden like the other icon-btns) — an
-   invisible-until-hover element still reserves its layout space, which at
-   the width needed to show "Under <name>" was enough to crush .nav-item
-   (flex-1 min-w-0, the only shrinkable thing in the row) down to nothing.
-   Closed, this just clips to a sliver via ellipsis; the native dropdown
-   still shows full option text regardless of the trigger's own width. */
-.project-parent-select {
-  flex: none;
-  width: 1.6rem;
-  border: 0;
-  background: transparent;
-  color: var(--text-3);
-  font-size: 0.6875rem;
-  padding: var(--space-0-5) 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  cursor: pointer;
-}
-
-.project-parent-select:hover,
-.project-parent-select:focus-visible {
-  color: var(--text);
 }
 
 .subtasks {

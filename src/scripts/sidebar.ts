@@ -1,16 +1,10 @@
 import Sortable from 'sortablejs';
 import { actions } from 'astro:actions';
-import { startInlineRename } from './inline-rename';
+import { attachProjectEdit } from './project-edit';
 
-const DELETE_ICON =
-  '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M4 4l8 8M12 4l-8 8" /></svg><span class="sr-only">Delete project</span>';
-const RENAME_ICON =
-  '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M11.3 2.7a1.2 1.2 0 0 1 1.7 1.7L5.6 12l-2.4.7.7-2.4z" /></svg><span class="sr-only">Rename project</span>';
-const LOCK_ICON =
-  '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="7" width="9" height="6" rx="1.3" /><path d="M5.3 7V5.2a2.7 2.7 0 0 1 5.4 0V7" /></svg><span class="sr-only">Toggle private/work</span>';
-const BRIEFCASE_ICON =
-  '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5.3" width="12" height="7.5" rx="1.3" /><path d="M6 5.3V4.3a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v1M2 9h12" /></svg><span class="sr-only">Toggle private/work</span>';
 const STAR_PATH = 'M8 2.2 9.8 5.9l4.1.6-3 2.9.7 4.1L8 11.6 4.4 13.5l.7-4.1-3-2.9 4.1-.6z';
+const EDIT_ICON =
+  '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="3.5" cy="8" r="1" /><circle cx="8" cy="8" r="1" /><circle cx="12.5" cy="8" r="1" /></svg><span class="sr-only">Edit project</span>';
 
 // Same spacing as the server's projectHue() in AppLayout.astro — golden-angle
 // hue steps give every project a distinct, stable colour without storing one.
@@ -101,34 +95,9 @@ filterButtons.forEach((btn) => {
   btn.addEventListener('click', () => setTaskFilter(btn.dataset.filter as 'all' | 'work' | 'private'));
 });
 
-// A project's private/work badge — always visible (unlike rename/delete),
-// since the point is to see it at a glance, and clicking it just flips the
-// type in place. Works for both a project <li> and the Inbox's own row,
-// which both carry data-project-id on their own container.
-function attachProjectTypeBadge(button: HTMLButtonElement): void {
-  button.addEventListener('click', async () => {
-    const projectId = Number(button.dataset.projectId);
-    const current = button.dataset.type === 'private' ? 'private' : 'work';
-    const next = current === 'private' ? 'work' : 'private';
-    const row = button.closest<HTMLElement>('[data-project-id]');
-
-    const apply = (type: 'private' | 'work') => {
-      button.dataset.type = type;
-      button.innerHTML = type === 'private' ? LOCK_ICON : BRIEFCASE_ICON;
-      button.title = type === 'private' ? 'Private — click to mark as Work' : 'Work — click to mark as Private';
-      if (row) row.dataset.projectType = type;
-    };
-
-    apply(next);
-    const { error } = await actions.setProjectType({ projectId, type: next });
-    if (error) {
-      apply(current);
-      alert(error.message);
-    }
-  });
-}
-
-document.querySelectorAll<HTMLButtonElement>('.project-type-badge').forEach(attachProjectTypeBadge);
+// Project type is edited from the project-edit.ts modal now (see the "..."
+// icon-btn), not a row toggle — kept the Inbox row filter-agnostic same as
+// before, it just never had one to begin with.
 
 // Favoriting can add/remove a whole second row elsewhere on the page (the
 // Favorites section) and the existing rename/delete/color handlers only
@@ -150,26 +119,7 @@ function attachProjectFavorite(button: HTMLButtonElement): void {
 
 document.querySelectorAll<HTMLButtonElement>('.project-favorite').forEach(attachProjectFavorite);
 
-// Reparenting moves a row to a different place in the tree, same "just
-// reload" reasoning as favoriting above.
-function attachProjectParentSelect(select: HTMLSelectElement): void {
-  const original = select.value;
-  select.addEventListener('change', async () => {
-    const projectId = Number(select.dataset.projectId);
-    const parentProjectId = select.value === '' ? null : Number(select.value);
-    select.disabled = true;
-    const { error } = await actions.setProjectParent({ projectId, parentProjectId });
-    if (error) {
-      select.disabled = false;
-      select.value = original;
-      alert(error.message);
-      return;
-    }
-    location.reload();
-  });
-}
-
-document.querySelectorAll<HTMLSelectElement>('.project-parent-select').forEach(attachProjectParentSelect);
+// Reparenting is also in the project-edit.ts modal now, alongside type.
 
 // The sidebar dot opens a swatch-grid popover — 64 colours is too many to
 // cycle through one click at a time.
@@ -293,72 +243,7 @@ if (favoriteList) {
   });
 }
 
-// Exported per-element so a project created without a reload can be wired up
-// individually — re-running the bulk attach would double-bind existing rows.
-function attachProjectDelete(button: HTMLButtonElement): void {
-  button.addEventListener('click', async () => {
-    if (!confirm('Delete this project and all its tasks?')) return;
-    const projectId = Number(button.dataset.projectId);
-    const row = button.closest<HTMLElement>('li');
-    const link = row?.querySelector<HTMLAnchorElement>('a.nav-item');
-    const onThisProject = link != null && location.pathname === link.getAttribute('href');
-
-    row?.classList.add('row-leave');
-
-    const { error } = await actions.deleteProject({ projectId });
-    if (error) {
-      row?.classList.remove('row-leave');
-      alert(error.message);
-      return;
-    }
-
-    // Only leave the page if you just deleted the project you're looking at.
-    if (onThisProject) {
-      location.href = '/app/today';
-      return;
-    }
-    row?.remove();
-  });
-}
-
-function attachProjectRename(button: HTMLButtonElement): void {
-  button.addEventListener('click', () => {
-    const projectId = Number(button.dataset.projectId);
-    const li = button.closest<HTMLElement>('li');
-    const link = li?.querySelector<HTMLAnchorElement>('a.nav-item');
-    const nameEl = link?.querySelector<HTMLElement>('.truncate');
-    const deleteBtn = li?.querySelector<HTMLButtonElement>('.project-delete');
-    if (!li || !link || !nameEl) return;
-    const onThisProject = location.pathname === link.getAttribute('href');
-
-    startInlineRename({
-      container: li,
-      displayEl: link,
-      hideWhileEditing: [button, ...(deleteBtn ? [deleteBtn] : [])],
-      currentValue: nameEl.textContent ?? '',
-      save: (name) => actions.renameProject({ projectId, name }),
-      onSaved: (name, data) => {
-        nameEl.textContent = name;
-        // The name changed, so the derived slug (and therefore the URL) did
-        // too — update the link, and if we're on that project's page right
-        // now, swap the address bar so a refresh doesn't 404 into a redirect.
-        const slug = (data as { slug?: string } | undefined)?.slug;
-        if (slug) {
-          const href = `/app/projects/${slug}`;
-          link.setAttribute('href', href);
-          if (onThisProject) history.replaceState(null, '', href);
-        }
-        if (onThisProject) {
-          const heading = document.querySelector<HTMLElement>('h1.page-title');
-          if (heading) heading.textContent = name;
-        }
-      },
-    });
-  });
-}
-
-document.querySelectorAll<HTMLButtonElement>('.project-delete').forEach(attachProjectDelete);
-document.querySelectorAll<HTMLButtonElement>('.project-rename').forEach(attachProjectRename);
+// Rename and delete are also in the project-edit.ts modal now.
 
 const newProjectForm = document.getElementById('new-project')?.closest('form');
 newProjectForm?.addEventListener('submit', async (e) => {
@@ -412,14 +297,6 @@ newProjectForm?.addEventListener('submit', async (e) => {
 
   link.append(name);
 
-  const typeBadge = document.createElement('button');
-  typeBadge.type = 'button';
-  typeBadge.className = 'project-type-badge';
-  typeBadge.dataset.projectId = String(project.id);
-  typeBadge.dataset.type = project.type;
-  typeBadge.title = project.type === 'private' ? 'Private — click to mark as Work' : 'Work — click to mark as Private';
-  typeBadge.innerHTML = project.type === 'private' ? LOCK_ICON : BRIEFCASE_ICON;
-
   const favoriteBtn = document.createElement('button');
   favoriteBtn.type = 'button';
   favoriteBtn.className = 'project-favorite icon-btn';
@@ -428,25 +305,17 @@ newProjectForm?.addEventListener('submit', async (e) => {
   favoriteBtn.title = `Add ${project.name} to Favorites`;
   favoriteBtn.innerHTML = `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"><path d="${STAR_PATH}" /></svg><span class="sr-only">Toggle favorite</span>`;
 
-  const renameBtn = document.createElement('button');
-  renameBtn.className = 'project-rename icon-btn';
-  renameBtn.dataset.projectId = String(project.id);
-  renameBtn.title = `Rename ${project.name}`;
-  renameBtn.innerHTML = RENAME_ICON;
+  const editBtn = document.createElement('button');
+  editBtn.className = 'project-edit icon-btn';
+  editBtn.dataset.projectId = String(project.id);
+  editBtn.title = `Edit ${project.name}`;
+  editBtn.innerHTML = EDIT_ICON;
 
-  const deleteBtn = document.createElement('button');
-  deleteBtn.className = 'project-delete icon-btn';
-  deleteBtn.dataset.projectId = String(project.id);
-  deleteBtn.title = `Delete ${project.name}`;
-  deleteBtn.innerHTML = DELETE_ICON;
-
-  li.append(dot, link, typeBadge, favoriteBtn, renameBtn, deleteBtn);
+  li.append(dot, link, favoriteBtn, editBtn);
   list.append(li);
   attachProjectColorDot(dot);
-  attachProjectTypeBadge(typeBadge);
   attachProjectFavorite(favoriteBtn);
-  attachProjectRename(renameBtn);
-  attachProjectDelete(deleteBtn);
+  attachProjectEdit(editBtn);
 
   input.value = '';
   input.focus();
