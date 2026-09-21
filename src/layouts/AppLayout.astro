@@ -4,6 +4,7 @@ import { actions } from 'astro:actions';
 import { env } from 'cloudflare:workers';
 import { listProjects, type Project } from '../lib/db';
 import { withSlugs } from '../lib/slug';
+import { DEFAULT_DATE_LOCALE } from '../lib/format';
 
 interface Props {
   title: string;
@@ -15,6 +16,9 @@ interface Props {
 const { title, projects: projectsProp } = Astro.props;
 const user = Astro.locals.user!;
 const projects = withSlugs(projectsProp ?? (await listProjects(env.DB, user.id)));
+// Exposed via data-locale on <body> below — client-built rows (task-create.ts)
+// have no server env access of their own, and read it from there.
+const locale = env.DATE_LOCALE ?? DEFAULT_DATE_LOCALE;
 // Every user gets an Inbox at provisioning, so this should always be found —
 // but a layout can't redirect (a returned Response renders nothing), so treat
 // it as "no Inbox link" rather than crashing every /app page.
@@ -89,7 +93,7 @@ const projectHue = (id: number) => (id * 137.5) % 360;
       } catch {}
     </script>
   </head>
-  <body class="flex min-h-screen flex-col md:flex-row">
+  <body class="flex min-h-screen flex-col md:flex-row" data-locale={locale}>
     <a href="#main-content" class="skip-link">Skip to content</a>
     <input type="checkbox" id="nav-toggle" class="peer sr-only md:hidden" aria-label="Toggle menu" />
 

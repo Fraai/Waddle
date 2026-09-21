@@ -5,7 +5,7 @@ import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/
 import { z } from 'zod';
 import * as db from '../../lib/db';
 import { getUserByEmail, type User } from '../../lib/users';
-import { todayISO, splitOverdueAndToday, groupUpcoming } from '../../lib/dates';
+import { todayISO, splitOverdueAndToday, groupUpcoming, DEFAULT_TIMEZONE } from '../../lib/dates';
 import { descriptionField, hrefField, repeatRuleField, timeString } from '../../lib/validation';
 
 // A single token maps to a single account (env.MCP_USER_EMAIL) — this is a
@@ -90,7 +90,7 @@ function buildServer(user: User): McpServer {
     { title: "List today's tasks", description: 'Lists open tasks that are overdue or due today.' },
     async () => {
       const tasks = await db.listOpenDatedTasks(env.DB, user.id);
-      const today = todayISO();
+      const today = todayISO(undefined, env.TIMEZONE ?? DEFAULT_TIMEZONE);
       const { overdue, today: dueToday } = splitOverdueAndToday(tasks, today);
       return toolResult({ today, overdue: overdue.map(taskView), dueToday: dueToday.map(taskView) });
     },
@@ -105,7 +105,7 @@ function buildServer(user: User): McpServer {
     },
     async ({ days = 7 }) => {
       const tasks = await db.listOpenDatedTasks(env.DB, user.id);
-      const today = todayISO();
+      const today = todayISO(undefined, env.TIMEZONE ?? DEFAULT_TIMEZONE);
       const cutoff = new Date(`${today}T00:00:00`);
       cutoff.setDate(cutoff.getDate() + days);
       const cutoffISO = cutoff.toISOString().slice(0, 10);

@@ -2,8 +2,8 @@
 import AppLayout from '../../layouts/AppLayout.astro';
 import { env } from 'cloudflare:workers';
 import { listAllTasks, listProjects } from '../../lib/db';
-import { todayISO } from '../../lib/dates';
-import { formatDate } from '../../lib/format';
+import { todayISO, DEFAULT_TIMEZONE } from '../../lib/dates';
+import { formatDate, DEFAULT_DATE_LOCALE } from '../../lib/format';
 import { computeStats } from '../../lib/stats';
 
 const user = Astro.locals.user!;
@@ -11,8 +11,10 @@ const [tasks, projects] = await Promise.all([
   listAllTasks(env.DB, user.id),
   listProjects(env.DB, user.id),
 ]);
+const timezone = env.TIMEZONE ?? DEFAULT_TIMEZONE;
+const locale = env.DATE_LOCALE ?? DEFAULT_DATE_LOCALE;
 const projectTypeById = new Map(projects.map((p) => [p.id, p.type]));
-const stats = computeStats(tasks, projectTypeById, todayISO());
+const stats = computeStats(tasks, projectTypeById, todayISO(undefined, timezone), timezone);
 
 // Same golden-angle hue spacing as AppLayout's sidebar dots and week.astro —
 // kept in sync by hand, see CLAUDE.md.
@@ -29,7 +31,7 @@ const heatLevel = (count: number) => {
   return 4;
 };
 const monthLabel = (isoDate: string) =>
-  new Date(`${isoDate}T00:00:00`).toLocaleDateString('en-GB', { month: 'short' });
+  new Date(`${isoDate}T00:00:00`).toLocaleDateString(locale, { month: 'short' });
 // Only label a column when it's the first one to cross into that month.
 let lastMonth = '';
 const columnMonths = stats.heatmap.map((column) => {
@@ -103,7 +105,7 @@ const priorityColor: Record<number, string> = { 1: 'var(--p1)', 2: 'var(--p2)', 
                     <div
                       class="heatmap-cell"
                       data-level={heatLevel(cell.count)}
-                      title={`${cell.count} completed on ${formatDate(cell.date)}`}
+                      title={`${cell.count} completed on ${formatDate(cell.date, locale)}`}
                     ></div>
                   ))}
                 </div>
@@ -215,7 +217,7 @@ const priorityColor: Record<number, string> = { 1: 'var(--p1)', 2: 'var(--p2)', 
           <ul class="fun-facts">
             {stats.busiestDay && (
               <li>
-                <strong>Busiest day:</strong> {formatDate(stats.busiestDay.date)}{' '}
+                <strong>Busiest day:</strong> {formatDate(stats.busiestDay.date, locale)}{' '}
                 ({stats.busiestDay.count} {stats.busiestDay.count === 1 ? 'task' : 'tasks'})
               </li>
             )}

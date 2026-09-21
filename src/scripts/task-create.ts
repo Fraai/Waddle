@@ -3,11 +3,15 @@ import { bumpOpenCount } from './open-count';
 import { attachTaskToggle } from './task-toggle';
 import { attachTaskDelete } from './task-delete';
 import { attachTaskEdit } from './task-edit';
-import { formatDate, formatDateHeading } from '../lib/format';
+import { formatDate, formatDateHeading, DEFAULT_DATE_LOCALE } from '../lib/format';
 import { buildMoveButton, refreshMoveButtons, swapWithSibling } from './keyboard-reorder';
 
 const DELETE_ICON =
   '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M4 4l8 8M12 4l-8 8" /></svg><span class="sr-only">Delete task</span>';
+
+// Set on <body> by AppLayout.astro — this script has no server env access of
+// its own, since it also runs for rows built client-side without a reload.
+const LOCALE = document.body.dataset.locale || DEFAULT_DATE_LOCALE;
 
 // Same spacing as AppLayout.astro's sidebar dots — golden-angle hue steps
 // give every project a distinct, stable colour without storing one.
@@ -72,7 +76,7 @@ function buildTaskRow(
   if (opts.showPill && task.due_date) {
     const pill = document.createElement('span');
     pill.className = task.due_date < opts.today ? 'pill pill--overdue' : 'pill';
-    pill.textContent = formatDate(task.due_date);
+    pill.textContent = formatDate(task.due_date, LOCALE);
     main.append(pill);
   }
 
@@ -302,7 +306,7 @@ function attachUpcomingComposer(form: HTMLFormElement): void {
 
       const heading = document.createElement('h2');
       heading.className = 'label-caps mb-2';
-      heading.textContent = formatDateHeading(dueDate, today);
+      heading.textContent = formatDateHeading(dueDate, today, LOCALE);
 
       const list = document.createElement('ul');
       list.className = 'task-list';

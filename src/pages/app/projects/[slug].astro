@@ -4,8 +4,8 @@ import { actions } from 'astro:actions';
 import { env } from 'cloudflare:workers';
 import * as db from '../../../lib/db';
 import { withSlugs } from '../../../lib/slug';
-import { todayISO } from '../../../lib/dates';
-import { formatDate } from '../../../lib/format';
+import { todayISO, DEFAULT_TIMEZONE } from '../../../lib/dates';
+import { formatDate, DEFAULT_DATE_LOCALE } from '../../../lib/format';
 import { repeatRuleLabel } from '../../../lib/repeat';
 
 const user = Astro.locals.user!;
@@ -43,7 +43,9 @@ const sectionGroups = [
   ...sections.map((s) => ({ id: s.id, name: s.name, tasks: openTopLevel.filter((t) => t.section_id === s.id) })),
 ];
 
-const today = todayISO();
+const timezone = env.TIMEZONE ?? DEFAULT_TIMEZONE;
+const locale = env.DATE_LOCALE ?? DEFAULT_DATE_LOCALE;
+const today = todayISO(undefined, timezone);
 const openCount = openTopLevel.length;
 ---
 <AppLayout title={project.name} projects={rawProjects}>
@@ -140,7 +142,7 @@ const openCount = openTopLevel.length;
                         <path d="M8 5.2V8l1.9 1.4" />
                       </svg>
                     )}
-                    {formatDate(task.due_date)}{task.due_time && ` · ${task.due_time}`}
+                    {formatDate(task.due_date, locale)}{task.due_time && ` · ${task.due_time}`}
                   </span>
                 )}
                 <button type="button" class="move-btn move-up icon-btn" title={`Move "${task.title}" up`}>

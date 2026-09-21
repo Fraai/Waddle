@@ -1,9 +1,10 @@
 import * as db from './db';
 import { sendPush, type PushEnv } from './push';
-import { todayISO, nowHHMM } from './dates';
+import { todayISO, nowHHMM, DEFAULT_TIMEZONE } from './dates';
 
 interface SweepEnv extends PushEnv {
   DB: D1Database;
+  TIMEZONE?: string;
 }
 
 // Runs on Cloudflare's cron trigger (every 5 minutes — see worker-entry.ts
@@ -12,7 +13,8 @@ interface SweepEnv extends PushEnv {
 export async function runNotificationSweep(env: SweepEnv): Promise<void> {
   if (!env.VAPID_PUBLIC_KEY || !env.VAPID_PRIVATE_KEY || !env.VAPID_SUBJECT) return;
 
-  const due = await db.listTasksDueForNotification(env.DB, todayISO(), nowHHMM());
+  const timezone = env.TIMEZONE ?? DEFAULT_TIMEZONE;
+  const due = await db.listTasksDueForNotification(env.DB, todayISO(undefined, timezone), nowHHMM(undefined, timezone));
   const notifiedTaskIds = new Set<number>();
 
   for (const row of due) {

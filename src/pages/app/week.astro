@@ -3,8 +3,8 @@ import AppLayout from '../../layouts/AppLayout.astro';
 import { actions } from 'astro:actions';
 import { env } from 'cloudflare:workers';
 import { listOpenDatedTasks, listProjects } from '../../lib/db';
-import { todayISO, getWeekDates, groupWeek } from '../../lib/dates';
-import { formatWeekday, formatDayMonth } from '../../lib/format';
+import { todayISO, getWeekDates, groupWeek, DEFAULT_TIMEZONE } from '../../lib/dates';
+import { formatWeekday, formatDayMonth, DEFAULT_DATE_LOCALE } from '../../lib/format';
 import { repeatRuleLabel } from '../../lib/repeat';
 
 const user = Astro.locals.user!;
@@ -27,21 +27,23 @@ const taskProjectType = (task: { project_id: number }) => {
   return p?.is_inbox ? undefined : p?.type;
 };
 
-const today = todayISO();
+const timezone = env.TIMEZONE ?? DEFAULT_TIMEZONE;
+const locale = env.DATE_LOCALE ?? DEFAULT_DATE_LOCALE;
+const today = todayISO(undefined, timezone);
 const weekDates = getWeekDates(today);
 const days = groupWeek(tasks, weekDates);
 ---
 <AppLayout title="Week" projects={projects}>
   <header class="page-head">
     <h1 class="page-title">Week</h1>
-    <p class="mt-1 text-sm" style="color: var(--text-2)">{formatWeekday(weekDates[0])} {formatDayMonth(weekDates[0])} – {formatWeekday(weekDates[6])} {formatDayMonth(weekDates[6])}</p>
+    <p class="mt-1 text-sm" style="color: var(--text-2)">{formatWeekday(weekDates[0], locale)} {formatDayMonth(weekDates[0], locale)} – {formatWeekday(weekDates[6], locale)} {formatDayMonth(weekDates[6], locale)}</p>
   </header>
 
   <div class="week-grid">
     {days.map((day, i) => (
       <section class="week-day">
         <h2 class="label-caps mb-3" style={i === 0 ? 'color: var(--accent)' : undefined}>
-          {i === 0 ? 'Today' : formatWeekday(day.date)} · {formatDayMonth(day.date)}
+          {i === 0 ? 'Today' : formatWeekday(day.date, locale)} · {formatDayMonth(day.date, locale)}
         </h2>
 
         <ul class="task-list" data-date={day.date} data-remove-done>

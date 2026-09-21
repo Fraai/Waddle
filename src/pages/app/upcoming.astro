@@ -3,8 +3,8 @@ import AppLayout from '../../layouts/AppLayout.astro';
 import { actions } from 'astro:actions';
 import { env } from 'cloudflare:workers';
 import { listOpenDatedTasks, listProjects } from '../../lib/db';
-import { todayISO, groupUpcoming } from '../../lib/dates';
-import { formatDateHeading } from '../../lib/format';
+import { todayISO, groupUpcoming, DEFAULT_TIMEZONE } from '../../lib/dates';
+import { formatDateHeading, DEFAULT_DATE_LOCALE } from '../../lib/format';
 import { repeatRuleLabel } from '../../lib/repeat';
 
 const user = Astro.locals.user!;
@@ -14,7 +14,9 @@ const [tasks, projects] = await Promise.all([
 ]);
 const inbox = projects.find((p) => p.is_inbox === 1);
 const projectsById = new Map(projects.map((p) => [p.id, p]));
-const today = todayISO();
+const timezone = env.TIMEZONE ?? DEFAULT_TIMEZONE;
+const locale = env.DATE_LOCALE ?? DEFAULT_DATE_LOCALE;
+const today = todayISO(undefined, timezone);
 const groups = groupUpcoming(tasks, today);
 
 // Same spacing as AppLayout.astro's sidebar dots — golden-angle hue steps
@@ -42,7 +44,7 @@ const taskProjectType = (task: { project_id: number }) => {
 
     {groups.map((group) => (
       <section class="mb-6" data-date={group.date}>
-        <h2 class="label-caps mb-3">{formatDateHeading(group.date, today)}</h2>
+        <h2 class="label-caps mb-3">{formatDateHeading(group.date, today, locale)}</h2>
         <ul class="task-list" data-remove-done>
           {group.tasks.map((task) => (
             <li

@@ -1,22 +1,27 @@
 import type { Task } from './db';
+import { DEFAULT_TIMEZONE } from './dates';
 
-const TZ = 'Europe/Brussels';
 const WEEKDAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const HEATMAP_DAYS = 371; // 53 full weeks, ending today
 
 // created_at is SQLite's `datetime('now')` ("YYYY-MM-DD HH:MM:SS", UTC, no
 // offset marker); done_at is `Date.toISOString()` (already has one). Both
-// need to end up parsed as UTC before converting to Brussels local time.
+// need to end up parsed as UTC before converting to local time.
 function toDate(sqlOrIso: string): Date {
   return /Z|[+-]\d\d:\d\d$/.test(sqlOrIso) ? new Date(sqlOrIso) : new Date(`${sqlOrIso.replace(' ', 'T')}Z`);
 }
 
-const partsFormatter = new Intl.DateTimeFormat('en-GB', {
-  timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', hourCycle: 'h23', weekday: 'short',
-});
+// 'en-GB' here is fixed on purpose — its weekday output is parsed against
+// the hardcoded English WEEKDAY_LABELS above, not shown to anyone, so it
+// isn't the DATE_LOCALE display setting the rest of the app follows.
+function partsFormatter(timezone: string): Intl.DateTimeFormat {
+  return new Intl.DateTimeFormat('en-GB', {
+    timeZone: timezone, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', hourCycle: 'h23', weekday: 'short',
+  });
+}
 
-function localParts(sqlOrIso: string): { date: string; hour: number; weekday: string } {
-  const parts = Object.fromEntries(partsFormatter.formatToParts(toDate(sqlOrIso)).map((p) => [p.type, p.value]));
+function localParts(sqlOrIso: string, formatter: Intl.DateTimeFormat): { date: string; hour: number; weekday: string } {
+  const parts = Object.fromEntries(formatter.formatToParts(toDate(sqlOrIso)).map((p) => [p.type, p.value]));
   return { date: `${parts.year}-${parts.month}-${parts.day}`, hour: Number(parts.hour), weekday: parts.weekday };
 }
 
@@ -65,8 +70,9 @@ export interface TaskStats {
 }
 
 export function computeStats(
-  tasks: Task[], projectTypeById: Map<number, 'work' | 'private'>, today: string,
+  tasks: Task[], projectTypeById: Map<number, 'work' | 'private'>, today: string, timezone: string = DEFAULT_TIMEZONE,
 ): TaskStats {
+  const formatter = partsFormatter(timezone);
   const done = tasks.filter((t) => t.done_at !== null);
 
   const completionsByDate = new Map<string, number>();
@@ -79,7 +85,7 @@ export function computeStats(
   let completionDaySum = 0;
 
   for (const task of done) {
-    const { date, hour, weekday } = localParts(task.done_at!);
+    const { date, hour, weekday } = localParts(task.done_at!, formatter);
     completionsByDate.set(date, (completionsByDate.get(date) ?? 0) + 1);
     byWeekdayCount.set(weekday, (byWeekdayCount.get(weekday) ?? 0) + 1);
     byHourCount.set(hour, (byHourCount.get(hour) ?? 0) + 1);
@@ -95,7 +101,7 @@ export function computeStats(
     }
 
     completionDaySum += Math.max(0, Math.round(
-      (new Date(`${date}T00:00:00Z`).getTime() - new Date(`${localParts(task.created_at).date}T00:00:00Z`).getTime())
+      (new Date(`${date}T00:00:00Z`).getTime() - new Date(`${localParts(task.created_at, formatter).date}T00:00:00Z`).getTime())
       / 86_400_000,
     ));
   }

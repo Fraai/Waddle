@@ -3,8 +3,8 @@ import AppLayout from '../../layouts/AppLayout.astro';
 import { actions } from 'astro:actions';
 import { env } from 'cloudflare:workers';
 import { listOpenDatedTasks, listProjects } from '../../lib/db';
-import { todayISO, splitOverdueAndToday } from '../../lib/dates';
-import { formatDate } from '../../lib/format';
+import { todayISO, splitOverdueAndToday, DEFAULT_TIMEZONE } from '../../lib/dates';
+import { formatDate, DEFAULT_DATE_LOCALE } from '../../lib/format';
 import { repeatRuleLabel } from '../../lib/repeat';
 
 const user = Astro.locals.user!;
@@ -14,7 +14,9 @@ const [tasks, projects] = await Promise.all([
 ]);
 const inbox = projects.find((p) => p.is_inbox === 1);
 const projectsById = new Map(projects.map((p) => [p.id, p]));
-const today = todayISO();
+const timezone = env.TIMEZONE ?? DEFAULT_TIMEZONE;
+const locale = env.DATE_LOCALE ?? DEFAULT_DATE_LOCALE;
+const today = todayISO(undefined, timezone);
 const { overdue, today: dueToday } = splitOverdueAndToday(tasks, today);
 
 // Same spacing as AppLayout.astro's sidebar dots — golden-angle hue steps
@@ -33,7 +35,7 @@ const taskProjectType = (task: { project_id: number }) => {
   <div class="mx-auto max-w-2xl">
     <header class="page-head">
       <h1 class="page-title">Today</h1>
-      <p class="mt-1 text-sm" style="color: var(--text-2)">{formatDate(today)}</p>
+      <p class="mt-1 text-sm" style="color: var(--text-2)">{formatDate(today, locale)}</p>
     </header>
 
     {overdue.length > 0 && (
@@ -92,7 +94,7 @@ const taskProjectType = (task: { project_id: number }) => {
                       <path d="M8 5.2V8l1.9 1.4" />
                     </svg>
                   )}
-                  {formatDate(task.due_date!)}{task.due_time && ` · ${task.due_time}`}
+                  {formatDate(task.due_date!, locale)}{task.due_time && ` · ${task.due_time}`}
                 </span>
                 <button class="task-delete icon-btn" data-task-id={task.id} title={`Delete "${task.title}"`}>
                   <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">

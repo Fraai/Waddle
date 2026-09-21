@@ -40,6 +40,8 @@ Internal Todoist alternative for the Fraai Agency team, branded as "Waddle" for 
 | `AUTH_GOOGLE_SECRET` | Google OAuth client secret |
 | `ALLOWED_EMAIL_DOMAIN` | Domain allowed to sign in via any provider (no `@`, e.g. `fraai.agency`) |
 | `APP_TAGLINE` | Subtitle under the app name on the sign-in page — optional, defaults to "The internal task list for your team." (`login.astro`) |
+| `TIMEZONE` | IANA timezone name — optional, defaults to `Europe/Brussels`. Governs "today", due-time notifications, and Statistics' local-time breakdowns (`lib/dates.ts`'s `DEFAULT_TIMEZONE`, `lib/stats.ts`) |
+| `DATE_LOCALE` | BCP 47 locale tag — optional, defaults to `en-GB`. Governs date/weekday display formatting (`lib/format.ts`'s `DEFAULT_DATE_LOCALE`) — passed to client-built rows (`task-create.ts`) via `data-locale` on `AppLayout.astro`'s `<body>`, since those have no server env access of their own |
 | `AUTH_GITHUB_ID` / `AUTH_GITHUB_SECRET` | GitHub OAuth App credentials — optional, leave unset to hide the "Sign in with GitHub" button |
 | `AUTH_MICROSOFT_ID` / `AUTH_MICROSOFT_SECRET` | Azure AD (Entra) app registration credentials — optional, leave unset to hide the "Sign in with Microsoft" button |
 | `AUTH_MICROSOFT_TENANT` | Optional, defaults to `common` (any tenant) — set to a specific Entra tenant ID to restrict which org's accounts even reach the consent screen |

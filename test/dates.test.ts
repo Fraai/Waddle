@@ -11,10 +11,15 @@ function task(overrides: Partial<Task>): Task {
 }
 
 describe('todayISO', () => {
-  it('formats a date as YYYY-MM-DD in the Europe/Brussels timezone', () => {
+  it('formats a date as YYYY-MM-DD in the Europe/Brussels timezone by default', () => {
     // 2026-01-01T23:30:00Z is 2026-01-02 00:30 CET — a UTC-based "today"
     // would get this wrong, which is exactly the bug this function avoids.
     expect(todayISO(new Date('2026-01-01T23:30:00Z'))).toBe('2026-01-02');
+  });
+
+  it('uses an explicit timezone override instead (TIMEZONE env var)', () => {
+    // Same instant, but 23:30 UTC is still 2026-01-01 in US/Pacific (-08:00).
+    expect(todayISO(new Date('2026-01-01T23:30:00Z'), 'America/Los_Angeles')).toBe('2026-01-01');
   });
 });
 

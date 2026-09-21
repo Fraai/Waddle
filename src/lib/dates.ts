@@ -1,16 +1,20 @@
 import type { Task } from './db';
 
-// Uses the fixed Europe/Brussels timezone rather than the Worker's UTC
-// clock, so "today" matches what a Belgium-based user actually sees, even
-// right after midnight UTC.
-export function todayISO(date: Date = new Date()): string {
-  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Brussels' }).format(date);
+// Every deployment has one team in one place — the default matches this
+// instance's (Fraai Agency, Belgium); a self-hoster sets TIMEZONE to
+// override it, see CLAUDE.md / .env.example.
+export const DEFAULT_TIMEZONE = 'Europe/Brussels';
+
+// Uses the deployment's own timezone rather than the Worker's UTC clock, so
+// "today" matches what a user actually sees, even right after midnight UTC.
+export function todayISO(date: Date = new Date(), timezone: string = DEFAULT_TIMEZONE): string {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: timezone }).format(date);
 }
 
-// "HH:MM", 24h, Europe/Brussels — for comparing against tasks.due_time.
-export function nowHHMM(date: Date = new Date()): string {
+// "HH:MM", 24h — for comparing against tasks.due_time.
+export function nowHHMM(date: Date = new Date(), timezone: string = DEFAULT_TIMEZONE): string {
   return new Intl.DateTimeFormat('en-GB', {
-    timeZone: 'Europe/Brussels', hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+    timeZone: timezone, hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
   }).format(date);
 }
 
