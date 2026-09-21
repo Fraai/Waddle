@@ -14,6 +14,7 @@ Astro SSR on Cloudflare Workers, D1 for storage, Google/GitHub/Microsoft SSO res
 
 ## Features
 
+- **MCP server, not just a web UI.** `/api/mcp` gives Claude (Code, Desktop, or a custom connector) tools to list, create, and complete your tasks — ask what's due today or file one mid-conversation, no app-switching. See `CLAUDE.md` for the tool list and setup.
 - **Today / Upcoming / Week views.** Overdue and due-today tasks, a rolling agenda grouped by date, and a 7-day board you can drag tasks across.
 - **Projects**, personal to each user and marked private or work (filterable from the sidebar), with a colour you can set per project and a readable URL (`/app/projects/fitness`, not `/app/projects/7`). Every user gets an un-renameable, un-deletable Inbox on first login.
 - **Favorites and one level of nesting.** Star a project to also show it in a "Favorites" section above the main list; group related projects under a parent (one level deep, no grandchildren). Edit everything about a project, including its parent, from a single modal.
@@ -23,7 +24,6 @@ Astro SSR on Cloudflare Workers, D1 for storage, Google/GitHub/Microsoft SSO res
 - **Installable.** Has a manifest and icons, so it can be added to your home screen (iPhone/iPad) or dock (Mac) as a standalone app.
 - **Keyboard-accessible, not just drag-and-drop.** Reordering projects, favorites, tasks, and sections all have a "move up"/"move down" button alongside the drag handle, sidebar navigation has proper landmarks, and there's a skip-to-content link.
 - **Timezone and date format are config, not code.** Defaults match this instance's own team (Belgium); running it somewhere else is one env var, not a fork.
-- **MCP server.** `/api/mcp` exposes the app to Claude (Code, Desktop, or a custom connector) as tools for listing, creating, and completing tasks and projects. See `CLAUDE.md` for the tool list and setup.
 
 ## Deploying your own instance
 
