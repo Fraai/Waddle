@@ -21,6 +21,8 @@ Astro SSR on Cloudflare Workers, D1 for storage, Google/GitHub/Microsoft SSO res
 - **Push notifications.** A task with a due date and time sends a real Web Push notification, even with the app closed.
 - **Statistics**: completion streaks, a GitHub-style activity heatmap, and breakdowns by project, priority, day, and hour.
 - **Installable.** Has a manifest and icons, so it can be added to your home screen (iPhone/iPad) or dock (Mac) as a standalone app.
+- **Keyboard-accessible, not just drag-and-drop.** Reordering projects, favorites, tasks, and sections all have a "move up"/"move down" button alongside the drag handle, sidebar navigation has proper landmarks, and there's a skip-to-content link.
+- **Timezone and date format are config, not code.** Defaults match this instance's own team (Belgium); running it somewhere else is one env var, not a fork.
 - **MCP server.** `/api/mcp` exposes the app to Claude (Code, Desktop, or a custom connector) as tools for listing, creating, and completing tasks and projects. See `CLAUDE.md` for the tool list and setup.
 
 ## Deploying your own instance
