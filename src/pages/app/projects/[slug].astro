@@ -16,6 +16,7 @@ const projects = withSlugs(rawProjects);
 const project = projects.find((p) => p.slug === slug);
 if (!project) return Astro.redirect('/app/today');
 const projectId = project.id;
+const parentProject = project.parent_project_id ? projects.find((p) => p.id === project.parent_project_id) : undefined;
 
 const [sections, tasks] = await Promise.all([
   db.listSections(env.DB, user.id, projectId),
@@ -48,6 +49,11 @@ const openCount = openTopLevel.length;
 <AppLayout title={project.name} projects={rawProjects}>
   <div data-project-root={projectId} data-today={today} class="mx-auto max-w-2xl">
     <header class="page-head">
+      {parentProject && (
+        <a href={`/app/projects/${parentProject.slug}`} class="text-xs" style="color: var(--text-3)" data-astro-prefetch>
+          ← {parentProject.name}
+        </a>
+      )}
       <h1 class="page-title">{project.name}</h1>
       <p class="mt-1 text-sm" style="color: var(--text-2)" data-open-count={openCount}>
         {openCount === 0 ? 'All clear' : `${openCount} open ${openCount === 1 ? 'task' : 'tasks'}`}
