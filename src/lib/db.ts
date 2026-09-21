@@ -234,9 +234,9 @@ export async function deleteSection(db: D1Database, userId: number, sectionId: n
   if (results[1].meta.changes === 0) throw new NotFoundError('Section not found');
 }
 
-// ponytail: hardened per the Task 7 reorderProjects fix — checks that every
-// id in orderedIds actually belongs to this project before touching any row,
-// instead of silently no-op'ing on a foreign/nonexistent id.
+// Checks that every id in orderedIds actually belongs to this project before
+// touching any row, instead of silently no-op'ing on a foreign or
+// nonexistent id.
 export async function reorderSections(
   db: D1Database, userId: number, projectId: number, orderedIds: number[],
 ): Promise<void> {
@@ -462,9 +462,9 @@ export async function deleteTask(db: D1Database, userId: number, taskId: number)
   if (results[1].meta.changes === 0) throw new NotFoundError('Task not found');
 }
 
-// ponytail: hardened per the Task 7/8 reorderX fix — checks that every id in
-// orderedIds actually belongs to this project/user before touching any row,
-// instead of silently no-op'ing on a foreign/nonexistent id.
+// Checks that every id in orderedIds actually belongs to this project and
+// user before touching any row, instead of silently no-op'ing on a foreign
+// or nonexistent id.
 export async function reorderTasks(
   db: D1Database, userId: number, projectId: number, sectionId: number | null, orderedIds: number[],
 ): Promise<void> {
