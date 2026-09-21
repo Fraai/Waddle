@@ -17,6 +17,10 @@ const projectsById = new Map(projects.map((p) => [p.id, p]));
 const today = todayISO();
 const groups = groupUpcoming(tasks, today);
 
+// Same spacing as AppLayout.astro's sidebar dots — golden-angle hue steps
+// give every project a distinct, stable colour without storing one.
+const projectHue = (id: number) => (id * 137.5) % 360;
+
 // Inbox is the catch-all, not a private/work project — omitting the
 // attribute (rather than passing its type) keeps its tasks showing no
 // matter which the sidebar's filter is set to.
@@ -60,6 +64,11 @@ const taskProjectType = (task: { project_id: number }) => {
                   data-task-id={task.id}
                   aria-label={`Mark "${task.title}" done`}
                 />
+                <span
+                  class="project-dot"
+                  style={`--dot: ${projectsById.get(task.project_id)?.color ?? `hsl(${projectHue(task.project_id)} 62% 52%)`}`}
+                  title={projectsById.get(task.project_id)?.name}
+                ></span>
                 <span class="task-title">{task.title}</span>
                 {task.repeat_rule && (
                   <span class="task-repeat-badge" title={repeatRuleLabel(task.repeat_rule)}>

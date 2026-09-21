@@ -182,6 +182,8 @@ function resetTitle(form: HTMLFormElement): void {
 /** Today's "Due today" composer — always lands, undated pill, in that one list. */
 function attachTodayComposer(form: HTMLFormElement): void {
   const projectType = form.dataset.projectType;
+  const projectIdInput = form.querySelector<HTMLInputElement>('input[name="projectId"]');
+  const projectId = Number(projectIdInput?.value);
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     const task = await submitCreateTask(form);
@@ -195,7 +197,7 @@ function attachTodayComposer(form: HTMLFormElement): void {
       list.dataset.removeDone = '';
       section.querySelector('.empty')?.replaceWith(list);
     }
-    list?.append(buildTaskRow(task, { showPill: false, today: '', projectType }));
+    list?.append(buildTaskRow(task, { showPill: false, today: '', projectType, projectDot: { projectId, name: 'Inbox' } }));
     resetTitle(form);
   });
 }
@@ -243,6 +245,8 @@ function attachUpcomingComposer(form: HTMLFormElement): void {
   const dueInput = form.querySelector<HTMLInputElement>('input[type="date"]');
   const today = dueInput?.min ?? '';
   const projectType = form.dataset.projectType;
+  const projectIdInput = form.querySelector<HTMLInputElement>('input[name="projectId"]');
+  const projectId = Number(projectIdInput?.value);
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -276,7 +280,9 @@ function attachUpcomingComposer(form: HTMLFormElement): void {
       container.insertBefore(section, next ?? form);
     }
 
-    section.querySelector<HTMLUListElement>('ul.task-list')?.append(buildTaskRow(task, { showPill: false, today: '', projectType }));
+    section.querySelector<HTMLUListElement>('ul.task-list')?.append(
+      buildTaskRow(task, { showPill: false, today: '', projectType, projectDot: { projectId, name: 'Inbox' } }),
+    );
 
     const count = container.querySelectorAll('section[data-date]').length;
     const countEl = container.querySelector<HTMLElement>('.page-head p');
