@@ -23,6 +23,37 @@ const otherProjects = projects.filter((p) => p.is_inbox === 0);
 const favoriteProjects = otherProjects
   .filter((p) => p.is_favorite === 1)
   .sort((a, b) => (a.favorite_position ?? 0) - (b.favorite_position ?? 0));
+
+// Nesting is one level only — a project either has no parent (top-level) or
+// has one, never both a parent and children of its own (see setProjectParent
+// in lib/db.ts). `position` orders siblings: other projects sharing the same
+// parent_project_id, not a single global sequence.
+const topLevelProjects = otherProjects
+  .filter((p) => p.parent_project_id === null)
+  .sort((a, b) => a.position - b.position);
+const childrenByParent = new Map<number, (typeof otherProjects)>();
+for (const p of otherProjects) {
+  if (p.parent_project_id == null) continue;
+  const siblings = childrenByParent.get(p.parent_project_id) ?? [];
+  siblings.push(p);
+  childrenByParent.set(p.parent_project_id, siblings);
+}
+for (const siblings of childrenByParent.values()) siblings.sort((a, b) => a.position - b.position);
+// A project with children can't become a child itself (that would make its
+// own children grandchildren), so the "set parent" control only makes sense
+// to offer on projects that don't have any.
+const eligibleParents = topLevelProjects.filter((p) => !childrenByParent.has(p.id));
+const projectsById = new Map(otherProjects.map((p) => [p.id, p]));
+
+// One flat list, in tree order (each parent immediately followed by its own
+// children) — simpler than nested <ul>s, and keeps the existing single
+// #project-list Sortable/reorderProjects wiring working with only an
+// onMove guard added (see sidebar.ts) to stop a drag from crossing into a
+// different sibling group.
+const projectRenderOrder = topLevelProjects.flatMap((top) => [
+  { project: top, isChild: false },
+  ...(childrenByParent.get(top.id) ?? []).map((child) => ({ project: child, isChild: true })),
+]);
 const path = Astro.url.pathname;
 const isActive = (href: string) => path === href;
 
@@ -207,8 +238,13 @@ const projectHue = (id: number) => (id * 137.5) % 360;
 
       <div class="label-caps mt-4 mb-2 px-2">Projects</div>
       <ul id="project-list" class="flex flex-col gap-1">
-        {otherProjects.map((project) => (
-          <li data-project-id={project.id} data-project-type={project.type} class="flex items-center gap-1">
+        {projectRenderOrder.map(({ project, isChild }) => (
+          <li
+            data-project-id={project.id}
+            data-project-type={project.type}
+            data-parent-id={project.parent_project_id ?? ''}
+            class={`flex items-center gap-1${isChild ? ' project-row--child' : ''}`}
+          >
             <button
               type="button"
               class="project-dot"
@@ -259,6 +295,29 @@ const projectHue = (id: number) => (id * 137.5) % 360;
               </svg>
               <span class="sr-only">Toggle favorite</span>
             </button>
+            {!childrenByParent.has(project.id) && (
+              <select
+                class="project-parent-select"
+                data-project-id={project.id}
+                title="Set parent project"
+              >
+                <option value="" selected={project.parent_project_id === null}>Top level</option>
+                {/* Its own current parent must stay an option even if that parent now has
+                    other children too and would otherwise fail the eligibleParents filter —
+                    else the select silently shows "Top level" while the data still says
+                    otherwise, the moment a project gains a second child. */}
+                {eligibleParents
+                  .filter((p) => p.id !== project.id)
+                  .concat(
+                    project.parent_project_id != null && !eligibleParents.some((p) => p.id === project.parent_project_id)
+                      ? [projectsById.get(project.parent_project_id)!]
+                      : [],
+                  )
+                  .map((p) => (
+                    <option value={p.id} selected={project.parent_project_id === p.id}>{p.name}</option>
+                  ))}
+              </select>
+            )}
             <button class="project-rename icon-btn" data-project-id={project.id} title={`Rename ${project.name}`}>
               <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M11.3 2.7a1.2 1.2 0 0 1 1.7 1.7L5.6 12l-2.4.7.7-2.4z" />
@@ -275,9 +334,18 @@ const projectHue = (id: number) => (id * 137.5) % 360;
         ))}
       </ul>
 
-      <form method="POST" action={actions.createProject} class="mt-2">
+      <form method="POST" action={actions.createProject} class="mt-2 flex flex-col gap-1">
         <label class="sr-only" for="new-project">New project</label>
         <input id="new-project" name="name" placeholder="New project" class="field w-full" required />
+        {eligibleParents.length > 0 && (
+          <>
+            <label class="sr-only" for="new-project-parent">Parent project</label>
+            <select id="new-project-parent" name="parentProjectId" class="field w-full text-xs" style="color: var(--text-3)">
+              <option value="">Top level</option>
+              {eligibleParents.map((p) => <option value={p.id}>Under {p.name}</option>)}
+            </select>
+          </>
+        )}
       </form>
 
       {env.VAPID_PUBLIC_KEY && (

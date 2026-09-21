@@ -12,6 +12,7 @@ export interface Project {
   position: number;
   is_favorite: number;
   favorite_position: number | null;
+  parent_project_id: number | null;
   created_at: string;
 }
 
@@ -28,15 +29,23 @@ export async function listProjects(db: D1Database, userId: number): Promise<Proj
   return results;
 }
 
+// `position` orders a project among its siblings — other projects sharing
+// the same parent_project_id (NULL counts as its own group, "top level").
+// Not a single global sequence, so a new project (or one just reparented,
+// see setProjectParent) is appended to the end of whichever group it lands
+// in, not the end of the whole table.
 export async function createProject(
   db: D1Database, userId: number, name: string, type: 'private' | 'work' = 'work',
+  parentProjectId: number | null = null,
 ): Promise<Project> {
-  const row = await db.prepare('SELECT COALESCE(MAX(position), 0) AS max FROM projects WHERE user_id = ?')
-    .bind(userId).first<{ max: number }>();
+  if (parentProjectId != null) await assertEligibleParent(db, userId, parentProjectId);
+  const row = await db.prepare(
+    'SELECT COALESCE(MAX(position), 0) AS max FROM projects WHERE user_id = ? AND parent_project_id IS ?',
+  ).bind(userId, parentProjectId).first<{ max: number }>();
   const nextPosition = (row?.max ?? 0) + 1;
   const result = await db.prepare(
-    'INSERT INTO projects (user_id, name, type, position) VALUES (?, ?, ?, ?) RETURNING *',
-  ).bind(userId, name, type, nextPosition).first<Project>();
+    'INSERT INTO projects (user_id, name, type, position, parent_project_id) VALUES (?, ?, ?, ?, ?) RETURNING *',
+  ).bind(userId, name, type, nextPosition, parentProjectId).first<Project>();
   if (!result) throw new Error('Failed to create project');
   return result;
 }
@@ -68,6 +77,45 @@ export async function setProjectColor(
   if (meta.changes === 0) throw new NotFoundError('Project not found');
 }
 
+// A candidate parent must be owned, not the Inbox, and not itself a child —
+// nesting is capped at one level, so something that already has a parent
+// can't gain children of its own.
+async function assertEligibleParent(db: D1Database, userId: number, parentProjectId: number): Promise<void> {
+  const parent = await db.prepare(
+    'SELECT parent_project_id FROM projects WHERE id = ? AND user_id = ? AND is_inbox = 0',
+  ).bind(parentProjectId, userId).first<{ parent_project_id: number | null }>();
+  if (!parent) throw new NotFoundError('Project not found');
+  if (parent.parent_project_id != null) throw new ValidationError('That project is already a sub-project');
+}
+
+// Like the other one-level checks, this exists because SQLite can't express
+// "no grandchildren" as a table constraint.
+export class ValidationError extends Error {}
+
+export async function setProjectParent(
+  db: D1Database, userId: number, projectId: number, parentProjectId: number | null,
+): Promise<void> {
+  if (parentProjectId === projectId) throw new ValidationError('A project cannot be its own parent');
+
+  const project = await db.prepare('SELECT id FROM projects WHERE id = ? AND user_id = ? AND is_inbox = 0')
+    .bind(projectId, userId).first();
+  if (!project) throw new NotFoundError('Project not found');
+
+  if (parentProjectId != null) {
+    await assertEligibleParent(db, userId, parentProjectId);
+    const hasChildren = await db.prepare(
+      'SELECT 1 FROM projects WHERE parent_project_id = ? AND user_id = ? LIMIT 1',
+    ).bind(projectId, userId).first();
+    if (hasChildren) throw new ValidationError('A project with sub-projects of its own cannot become a sub-project');
+  }
+
+  const row = await db.prepare(
+    'SELECT COALESCE(MAX(position), 0) AS max FROM projects WHERE user_id = ? AND parent_project_id IS ? AND id != ?',
+  ).bind(userId, parentProjectId, projectId).first<{ max: number }>();
+  await db.prepare('UPDATE projects SET parent_project_id = ?, position = ? WHERE id = ? AND user_id = ?')
+    .bind(parentProjectId, (row?.max ?? 0) + 1, projectId, userId).run();
+}
+
 export async function deleteProject(db: D1Database, userId: number, projectId: number): Promise<void> {
   // Every statement is scoped by a subquery that re-checks ownership AND
   // is_inbox = 0 — not just by project_id — so a projectId belonging to
@@ -80,9 +128,14 @@ export async function deleteProject(db: D1Database, userId: number, projectId: n
   const results = await db.batch([
     db.prepare(`DELETE FROM tasks WHERE ${ownedProject}`).bind(projectId, userId),
     db.prepare(`DELETE FROM sections WHERE ${ownedProject}`).bind(projectId, userId),
+    // Sub-projects survive a parent's deletion, promoted to top-level —
+    // must run before the projects DELETE below, since a dangling
+    // parent_project_id would otherwise point at a row that no longer exists.
+    db.prepare('UPDATE projects SET parent_project_id = NULL WHERE parent_project_id = ? AND user_id = ?')
+      .bind(projectId, userId),
     db.prepare('DELETE FROM projects WHERE id = ? AND user_id = ? AND is_inbox = 0').bind(projectId, userId),
   ]);
-  if (results[2].meta.changes === 0) throw new NotFoundError('Project not found');
+  if (results[3].meta.changes === 0) throw new NotFoundError('Project not found');
 }
 
 export async function reorderProjects(db: D1Database, userId: number, orderedIds: number[]): Promise<void> {

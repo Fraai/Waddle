@@ -4,7 +4,7 @@ import * as db from '../lib/db';
 import { withSlugs } from '../lib/slug';
 import {
   createProjectSchema, renameProjectSchema, deleteProjectSchema, reorderProjectsSchema, setProjectTypeSchema,
-  setProjectColorSchema, toggleProjectFavoriteSchema, reorderFavoriteProjectsSchema,
+  setProjectColorSchema, toggleProjectFavoriteSchema, reorderFavoriteProjectsSchema, setProjectParentSchema,
   createSectionSchema, renameSectionSchema, deleteSectionSchema, reorderSectionsSchema,
   createTaskSchema, updateTaskSchema, toggleTaskDoneSchema, deleteTaskSchema, reorderTasksSchema,
   subscribePushSchema, unsubscribePushSchema,
@@ -31,6 +31,9 @@ async function wrapNotFound<T>(fn: () => Promise<T>): Promise<T> {
     if (err instanceof db.NotFoundError) {
       throw new ActionError({ code: 'NOT_FOUND', message: err.message });
     }
+    if (err instanceof db.ValidationError) {
+      throw new ActionError({ code: 'BAD_REQUEST', message: err.message });
+    }
     throw err;
   }
 }
@@ -41,8 +44,17 @@ export const server = {
     input: createProjectSchema,
     handler: async (input, context) => {
       const user = requireUser(context);
-      const project = await db.createProject(env.DB, user.id, input.name, input.type);
+      const project = await wrapNotFound(() =>
+        db.createProject(env.DB, user.id, input.name, input.type, input.parentProjectId ?? null));
       return projectWithSlug(user.id, project.id);
+    },
+  }),
+  setProjectParent: defineAction({
+    input: setProjectParentSchema,
+    handler: async (input, context) => {
+      const user = requireUser(context);
+      await wrapNotFound(() => db.setProjectParent(env.DB, user.id, input.projectId, input.parentProjectId));
+      return { success: true };
     },
   }),
   setProjectType: defineAction({

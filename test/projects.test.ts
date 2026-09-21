@@ -1,7 +1,7 @@
 import { describe, expect, it, beforeEach } from 'vitest';
 import { env } from 'cloudflare:test';
 import * as db from '../src/lib/db';
-import { createProjectSchema, setProjectTypeSchema } from '../src/lib/validation';
+import { createProjectSchema, setProjectTypeSchema, setProjectParentSchema } from '../src/lib/validation';
 
 describe('createProjectSchema', () => {
   it('makes type optional', () => {
@@ -17,6 +17,26 @@ describe('createProjectSchema', () => {
 
   it('rejects anything else', () => {
     expect(createProjectSchema.safeParse({ name: 'A', type: 'personal' }).success).toBe(false);
+  });
+
+  it('treats a blank parentProjectId (unselected <select>) as absent, not invalid', () => {
+    const result = createProjectSchema.safeParse({ name: 'A', parentProjectId: '' });
+    expect(result.success).toBe(true);
+    expect(result.data?.parentProjectId).toBeUndefined();
+  });
+
+  it('coerces a numeric parentProjectId', () => {
+    const result = createProjectSchema.safeParse({ name: 'A', parentProjectId: '3' });
+    expect(result.success).toBe(true);
+    expect(result.data?.parentProjectId).toBe(3);
+  });
+});
+
+describe('setProjectParentSchema', () => {
+  it('accepts a numeric parentProjectId or null, rejects missing/undefined', () => {
+    expect(setProjectParentSchema.safeParse({ projectId: 1, parentProjectId: 2 }).success).toBe(true);
+    expect(setProjectParentSchema.safeParse({ projectId: 1, parentProjectId: null }).success).toBe(true);
+    expect(setProjectParentSchema.safeParse({ projectId: 1 }).success).toBe(false);
   });
 });
 
@@ -243,5 +263,104 @@ describe('reorderFavoriteProjects', () => {
     await db.toggleProjectFavorite(env.DB, userId, a.id);
 
     await expect(db.reorderFavoriteProjects(env.DB, userId, [a.id, b.id])).rejects.toBeInstanceOf(db.NotFoundError);
+  });
+});
+
+describe('createProject with a parent', () => {
+  it('creates the project as a child, positioned among that parent\'s existing children', async () => {
+    const parent = await db.createProject(env.DB, userId, 'Client X');
+    const first = await db.createProject(env.DB, userId, 'Phase 1', 'work', parent.id);
+    const second = await db.createProject(env.DB, userId, 'Phase 2', 'work', parent.id);
+
+    expect(first.parent_project_id).toBe(parent.id);
+    expect(first.position).toBe(1);
+    expect(second.position).toBe(2);
+    // A sibling group under a parent is independent of the top-level one.
+    expect(parent.position).toBe(1);
+  });
+
+  it('throws NotFoundError if the given parent does not exist or is not owned', async () => {
+    const theirs = await db.createProject(env.DB, otherUserId, 'Theirs');
+    await expect(db.createProject(env.DB, userId, 'Child', 'work', theirs.id)).rejects.toBeInstanceOf(db.NotFoundError);
+  });
+
+  it('throws ValidationError if the given parent is itself a child', async () => {
+    const parent = await db.createProject(env.DB, userId, 'Client X');
+    const child = await db.createProject(env.DB, userId, 'Phase 1', 'work', parent.id);
+    await expect(db.createProject(env.DB, userId, 'Grandchild', 'work', child.id)).rejects.toBeInstanceOf(db.ValidationError);
+  });
+});
+
+describe('setProjectParent', () => {
+  it('reparents a top-level project under another, appended after existing children', async () => {
+    const parent = await db.createProject(env.DB, userId, 'Client X');
+    await db.createProject(env.DB, userId, 'Phase 1', 'work', parent.id);
+    const standalone = await db.createProject(env.DB, userId, 'Website Redesign');
+
+    await db.setProjectParent(env.DB, userId, standalone.id, parent.id);
+
+    const [reloaded] = (await db.listProjects(env.DB, userId)).filter((p) => p.id === standalone.id);
+    expect(reloaded.parent_project_id).toBe(parent.id);
+    expect(reloaded.position).toBe(2);
+  });
+
+  it('promotes a child back to top-level when set to null', async () => {
+    const parent = await db.createProject(env.DB, userId, 'Client X');
+    const child = await db.createProject(env.DB, userId, 'Phase 1', 'work', parent.id);
+
+    await db.setProjectParent(env.DB, userId, child.id, null);
+
+    const [reloaded] = (await db.listProjects(env.DB, userId)).filter((p) => p.id === child.id);
+    expect(reloaded.parent_project_id).toBeNull();
+  });
+
+  it('rejects a project becoming its own parent', async () => {
+    const a = await db.createProject(env.DB, userId, 'A');
+    await expect(db.setProjectParent(env.DB, userId, a.id, a.id)).rejects.toBeInstanceOf(db.ValidationError);
+  });
+
+  it('rejects nesting under a project that is itself already a child (no grandchildren)', async () => {
+    const parent = await db.createProject(env.DB, userId, 'Client X');
+    const child = await db.createProject(env.DB, userId, 'Phase 1', 'work', parent.id);
+    const other = await db.createProject(env.DB, userId, 'Other');
+
+    await expect(db.setProjectParent(env.DB, userId, other.id, child.id)).rejects.toBeInstanceOf(db.ValidationError);
+  });
+
+  it('rejects a project with its own children from becoming a child', async () => {
+    const parentA = await db.createProject(env.DB, userId, 'A');
+    await db.createProject(env.DB, userId, 'A child', 'work', parentA.id);
+    const parentB = await db.createProject(env.DB, userId, 'B');
+
+    await expect(db.setProjectParent(env.DB, userId, parentA.id, parentB.id)).rejects.toBeInstanceOf(db.ValidationError);
+  });
+
+  it('like setProjectType, exempts the inbox on both sides', async () => {
+    await env.DB.prepare('INSERT INTO projects (user_id, name, is_inbox) VALUES (?, ?, 1)').bind(userId, 'Inbox').run();
+    const inbox = await env.DB.prepare('SELECT id FROM projects WHERE user_id = ? AND is_inbox = 1')
+      .bind(userId).first<{ id: number }>();
+    const a = await db.createProject(env.DB, userId, 'A');
+
+    await expect(db.setProjectParent(env.DB, userId, inbox!.id, a.id)).rejects.toBeInstanceOf(db.NotFoundError);
+    await expect(db.setProjectParent(env.DB, userId, a.id, inbox!.id)).rejects.toBeInstanceOf(db.NotFoundError);
+  });
+
+  it('throws NotFoundError for a project owned by someone else', async () => {
+    const theirs = await db.createProject(env.DB, otherUserId, 'Theirs');
+    const a = await db.createProject(env.DB, userId, 'A');
+    await expect(db.setProjectParent(env.DB, userId, theirs.id, a.id)).rejects.toBeInstanceOf(db.NotFoundError);
+  });
+});
+
+describe('deleteProject with children', () => {
+  it('promotes children to top-level instead of deleting them', async () => {
+    const parent = await db.createProject(env.DB, userId, 'Client X');
+    const child = await db.createProject(env.DB, userId, 'Phase 1', 'work', parent.id);
+
+    await db.deleteProject(env.DB, userId, parent.id);
+
+    const remaining = await db.listProjects(env.DB, userId);
+    expect(remaining.map((p) => p.id)).toEqual([child.id]);
+    expect(remaining[0].parent_project_id).toBeNull();
   });
 });

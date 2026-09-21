@@ -644,6 +644,39 @@ h2:hover > .icon-btn,
   cursor: default;
 }
 
+/* Nesting is one level, so a fixed indent (rather than depth * some unit)
+   is all that's ever needed. */
+.project-row--child {
+  padding-left: var(--space-4);
+}
+
+/* A native <select> styled to sit quietly among the icon-btns rather than
+   read as a distinct form control — the row already has plenty going on. */
+/* Fixed narrow width (not opacity-hidden like the other icon-btns) — an
+   invisible-until-hover element still reserves its layout space, which at
+   the width needed to show "Under <name>" was enough to crush .nav-item
+   (flex-1 min-w-0, the only shrinkable thing in the row) down to nothing.
+   Closed, this just clips to a sliver via ellipsis; the native dropdown
+   still shows full option text regardless of the trigger's own width. */
+.project-parent-select {
+  flex: none;
+  width: 1.6rem;
+  border: 0;
+  background: transparent;
+  color: var(--text-3);
+  font-size: 0.6875rem;
+  padding: var(--space-0-5) 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.project-parent-select:hover,
+.project-parent-select:focus-visible {
+  color: var(--text);
+}
+
 .subtasks {
   margin: var(--space-2) 0 0 var(--indent-subtask);
   padding-left: var(--space-3);

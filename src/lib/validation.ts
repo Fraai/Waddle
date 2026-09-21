@@ -26,9 +26,13 @@ export const timeString = z.preprocess(
 
 export const projectType = z.enum(['private', 'work']);
 
+// Same blank-<select>-submits-"" concern as dateString/timeString above.
+const optionalIdParam = z.preprocess((v) => (v === '' || v == null ? undefined : v), idParam.optional());
+
 export const createProjectSchema = z.object({
   name: requiredText('Name is required'),
   type: projectType.optional(),
+  parentProjectId: optionalIdParam,
 });
 export const renameProjectSchema = z.object({
   projectId: idParam,
@@ -37,6 +41,7 @@ export const renameProjectSchema = z.object({
 export const deleteProjectSchema = z.object({ projectId: idParam });
 export const reorderProjectsSchema = z.object({ orderedIds: z.array(idParam).min(1) });
 export const setProjectTypeSchema = z.object({ projectId: idParam, type: projectType });
+export const setProjectParentSchema = z.object({ projectId: idParam, parentProjectId: idParam.nullable() });
 export const toggleProjectFavoriteSchema = z.object({ projectId: idParam });
 export const reorderFavoriteProjectsSchema = z.object({ orderedIds: z.array(idParam).min(1) });
 

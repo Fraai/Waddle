@@ -150,6 +150,27 @@ function attachProjectFavorite(button: HTMLButtonElement): void {
 
 document.querySelectorAll<HTMLButtonElement>('.project-favorite').forEach(attachProjectFavorite);
 
+// Reparenting moves a row to a different place in the tree, same "just
+// reload" reasoning as favoriting above.
+function attachProjectParentSelect(select: HTMLSelectElement): void {
+  const original = select.value;
+  select.addEventListener('change', async () => {
+    const projectId = Number(select.dataset.projectId);
+    const parentProjectId = select.value === '' ? null : Number(select.value);
+    select.disabled = true;
+    const { error } = await actions.setProjectParent({ projectId, parentProjectId });
+    if (error) {
+      select.disabled = false;
+      select.value = original;
+      alert(error.message);
+      return;
+    }
+    location.reload();
+  });
+}
+
+document.querySelectorAll<HTMLSelectElement>('.project-parent-select').forEach(attachProjectParentSelect);
+
 // The sidebar dot opens a swatch-grid popover — 64 colours is too many to
 // cycle through one click at a time.
 let colorPicker: HTMLDivElement | null = null;
@@ -235,7 +256,16 @@ if (list) {
   new Sortable(list, {
     animation: 150,
     easing: 'cubic-bezier(0.22, 1, 0.36, 1)',
+    // Nesting is one level, drag-reorder only within a sibling group — top-
+    // level projects among themselves, or one parent's children among
+    // themselves. Moving a project to a *different* group is what the
+    // parent <select> is for, not drag-and-drop.
+    onMove: (evt) => evt.dragged.dataset.parentId === evt.related.dataset.parentId,
     onEnd: async () => {
+      // Every row, in tree order, not just the moved group — reorderProjects
+      // assigns 1..N over exactly the ids it's given, so this renumbers the
+      // whole table, but the onMove guard above already ensures the drag
+      // itself couldn't change any group's relative order but its own.
       const orderedIds = [...list.children].map((el) => Number((el as HTMLElement).dataset.projectId));
       // The DOM already shows the new order — only reload if the write fails.
       const { error } = await actions.reorderProjects({ orderedIds });
@@ -338,6 +368,7 @@ newProjectForm?.addEventListener('submit', async (e) => {
 
   // Snapshot before disabling — a disabled control is excluded from FormData.
   const formData = new FormData(newProjectForm);
+  const hasParent = (formData.get('parentProjectId') as string | null) !== '' && formData.get('parentProjectId') != null;
   input.disabled = true;
   const { data: project, error } = await actions.createProject(formData);
   input.disabled = false;
@@ -346,9 +377,19 @@ newProjectForm?.addEventListener('submit', async (e) => {
     return;
   }
 
+  // A project created directly under a parent needs to land in the right
+  // spot in the tree, not just appended to the end — simplest to reload
+  // rather than work out where that is. Top-level (the common case) still
+  // gets the fast no-reload path below.
+  if (hasParent) {
+    location.reload();
+    return;
+  }
+
   const li = document.createElement('li');
   li.dataset.projectId = String(project.id);
   li.dataset.projectType = project.type;
+  li.dataset.parentId = ''; // always top-level here — the parented case reloaded above
   li.className = 'flex items-center gap-1 row-enter';
 
   const dot = document.createElement('button');
