@@ -4,7 +4,7 @@ A self-hosted Todoist alternative that talks to Claude natively: task management
 
 ![Statistics page: streaks, a GitHub-style activity heatmap, and day/hour breakdowns](docs/screenshot.png)
 
-Astro SSR on Cloudflare Workers, D1 for storage, Google SSO restricted to one Workspace domain of your choosing (no forking required, see below). Runs comfortably on Cloudflare's free tier for a small team, so self-hosting costs $0 where a per-seat SaaS plan doesn't.
+Astro SSR on Cloudflare Workers, D1 for storage, Google/GitHub/Microsoft SSO restricted to one domain of your choosing (no forking required, see below). Runs comfortably on Cloudflare's free tier for a small team, so self-hosting costs $0 where a per-seat SaaS plan doesn't.
 
 ## Why this instead of Todoist/Things/Linear's task view
 
@@ -16,6 +16,7 @@ Astro SSR on Cloudflare Workers, D1 for storage, Google SSO restricted to one Wo
 
 - **Today / Upcoming / Week views.** Overdue and due-today tasks, a rolling agenda grouped by date, and a 7-day board you can drag tasks across.
 - **Projects**, personal to each user and marked private or work (filterable from the sidebar), with a colour you can set per project and a readable URL (`/app/projects/fitness`, not `/app/projects/7`). Every user gets an un-renameable, un-deletable Inbox on first login.
+- **Favorites and one level of nesting.** Star a project to also show it in a "Favorites" section above the main list; group related projects under a parent (one level deep, no grandchildren). Edit everything about a project, including its parent, from a single modal.
 - **Sections, subtasks, descriptions, links, recurring tasks.** Sections group tasks within a project (drag to reorder); tasks can have subtasks, a free-text description, a link, and a repeat rule, all editable from a detail modal.
 - **Push notifications.** A task with a due date and time sends a real Web Push notification, even with the app closed.
 - **Statistics**: completion streaks, a GitHub-style activity heatmap, and breakdowns by project, priority, day, and hour.
