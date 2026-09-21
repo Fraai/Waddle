@@ -422,6 +422,15 @@ html[data-task-filter="private"] [data-project-type="work"] {
   gap: var(--space-2) var(--space-3);
 }
 
+/* .check has a small margin-top to visually center its 20px circle against
+   the text line — .project-dot's 8px circle has nothing playing that role,
+   so under .task-main's flex-start it sits flush at the top of the row
+   instead of level with the checkbox/title. Centering it against the row's
+   tallest sibling fixes that without hardcoding a matching offset. */
+.task-main > .project-dot {
+  align-self: center;
+}
+
 .task-title {
   flex: 1;
   /* Was 0 — fine back when the row never wrapped (nothing else to push
