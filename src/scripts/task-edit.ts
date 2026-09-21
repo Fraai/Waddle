@@ -9,12 +9,23 @@ const REPEAT_ICON =
 interface ProjectOption {
   id: number;
   name: string;
+  parentProjectId: number | null;
 }
 
 // Every page already fetches the project list for the sidebar and embeds it
 // as JSON (see AppLayout.astro) — reused here instead of a fetch just to
 // populate the picker.
 const PROJECTS: ProjectOption[] = JSON.parse(document.getElementById('projects-data')?.textContent || '[]');
+const PROJECT_NAME_BY_ID = new Map(PROJECTS.map((p) => [p.id, p.name]));
+
+// Names aren't unique (see lib/slug.ts's -2/-3 suffix handling) — a child
+// project prefixes its parent's name so two same-named projects under
+// different parents don't show up as identical, indistinguishable options.
+function projectOptionLabel(project: ProjectOption): string {
+  if (project.parentProjectId == null) return project.name;
+  const parentName = PROJECT_NAME_BY_ID.get(project.parentProjectId);
+  return parentName ? `${parentName} / ${project.name}` : project.name;
+}
 
 interface Modal {
   dialog: HTMLDialogElement;
@@ -113,7 +124,7 @@ function buildModal(): Modal {
   for (const project of PROJECTS) {
     const opt = document.createElement('option');
     opt.value = String(project.id);
-    opt.textContent = project.name;
+    opt.textContent = projectOptionLabel(project);
     projectSelect.append(opt);
   }
 
