@@ -90,6 +90,7 @@ const projectHue = (id: number) => (id * 137.5) % 360;
     </script>
   </head>
   <body class="flex min-h-screen flex-col md:flex-row">
+    <a href="#main-content" class="skip-link">Skip to content</a>
     <input type="checkbox" id="nav-toggle" class="peer sr-only md:hidden" aria-label="Toggle menu" />
 
     <header class="mobile-topbar sticky top-0 z-10 flex items-center gap-3 border-b border-[var(--hairline)] bg-[var(--chrome)] px-4 py-3 backdrop-blur-xl backdrop-saturate-150 md:hidden">
@@ -324,7 +325,7 @@ const projectHue = (id: number) => (id * 137.5) % 360;
       </form>
     </aside>
 
-    <main class="min-w-0 flex-1 px-4 pb-12 md:px-8">
+    <main id="main-content" tabindex="-1" class="min-w-0 flex-1 px-4 pb-12 md:px-8">
       <slot />
     </main>
 

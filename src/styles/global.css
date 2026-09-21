@@ -138,6 +138,29 @@ body {
   border: 0;
 }
 
+/* Off-screen (not just invisible) until focused, so a keyboard/screen-reader
+   user tabbing from the very top of the page can jump straight past the
+   sidebar's nav links and project list instead of tabbing through all of
+   it on every single page load. */
+.skip-link {
+  position: fixed;
+  top: var(--space-2);
+  left: var(--space-2);
+  z-index: 50;
+  transform: translateY(-150%);
+  padding: var(--space-2) var(--space-4);
+  background: var(--text);
+  color: var(--surface);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  border-radius: var(--r-sm);
+  transition: transform var(--fast) var(--ease);
+}
+
+.skip-link:focus {
+  transform: translateY(0);
+}
+
 /* ==========================================================================
    Chrome — translucent layers content scrolls under
    ========================================================================== */
