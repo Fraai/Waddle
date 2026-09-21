@@ -69,6 +69,8 @@ const days = groupWeek(tasks, weekDates);
                   class="project-dot"
                   style={`--dot: ${projectsById.get(task.project_id)?.color ?? `hsl(${projectHue(task.project_id)} 62% 52%)`}`}
                   title={projectsById.get(task.project_id)?.name}
+                  role="img"
+                  aria-label={projectsById.get(task.project_id)?.name}
                 ></span>
                 <span class="task-title">{task.title}</span>
                 {task.repeat_rule && (

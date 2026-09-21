@@ -57,6 +57,8 @@ function buildTaskRow(
     dot.className = 'project-dot';
     dot.style.setProperty('--dot', `hsl(${projectHue(opts.projectDot.projectId)} 62% 52%)`);
     dot.title = opts.projectDot.name;
+    dot.setAttribute('role', 'img');
+    dot.setAttribute('aria-label', opts.projectDot.name);
     main.append(dot);
   }
 
