@@ -180,3 +180,68 @@ describe('reorderProjects', () => {
     expect(projects.map((p) => p.name)).toEqual(['A', 'B']);
   });
 });
+
+describe('toggleProjectFavorite', () => {
+  it('turns favorite on, appending after any existing favorites', async () => {
+    const a = await db.createProject(env.DB, userId, 'A');
+    const b = await db.createProject(env.DB, userId, 'B');
+
+    await db.toggleProjectFavorite(env.DB, userId, a.id);
+    await db.toggleProjectFavorite(env.DB, userId, b.id);
+
+    const [reloadedA, reloadedB] = await db.listProjects(env.DB, userId);
+    expect(reloadedA.is_favorite).toBe(1);
+    expect(reloadedA.favorite_position).toBe(1);
+    expect(reloadedB.is_favorite).toBe(1);
+    expect(reloadedB.favorite_position).toBe(2);
+  });
+
+  it('turns favorite back off and clears favorite_position', async () => {
+    const a = await db.createProject(env.DB, userId, 'A');
+    await db.toggleProjectFavorite(env.DB, userId, a.id);
+    await db.toggleProjectFavorite(env.DB, userId, a.id);
+
+    const [reloaded] = await db.listProjects(env.DB, userId);
+    expect(reloaded.is_favorite).toBe(0);
+    expect(reloaded.favorite_position).toBeNull();
+  });
+
+  it('like setProjectType, exempts the inbox', async () => {
+    await env.DB.prepare('INSERT INTO projects (user_id, name, is_inbox) VALUES (?, ?, 1)').bind(userId, 'Inbox').run();
+    const inbox = await env.DB.prepare('SELECT id FROM projects WHERE user_id = ? AND is_inbox = 1')
+      .bind(userId).first<{ id: number }>();
+    await expect(db.toggleProjectFavorite(env.DB, userId, inbox!.id)).rejects.toBeInstanceOf(db.NotFoundError);
+  });
+
+  it('throws NotFoundError for a project owned by someone else', async () => {
+    const theirs = await db.createProject(env.DB, otherUserId, 'Theirs');
+    await expect(db.toggleProjectFavorite(env.DB, userId, theirs.id)).rejects.toBeInstanceOf(db.NotFoundError);
+  });
+});
+
+describe('reorderFavoriteProjects', () => {
+  it('rewrites favorite_position 1..n in the given order, independent of the main position', async () => {
+    const a = await db.createProject(env.DB, userId, 'A');
+    const b = await db.createProject(env.DB, userId, 'B');
+    const c = await db.createProject(env.DB, userId, 'C');
+    await db.toggleProjectFavorite(env.DB, userId, a.id);
+    await db.toggleProjectFavorite(env.DB, userId, b.id);
+    await db.toggleProjectFavorite(env.DB, userId, c.id);
+
+    await db.reorderFavoriteProjects(env.DB, userId, [c.id, a.id, b.id]);
+
+    const projects = await db.listProjects(env.DB, userId);
+    const byFavoritePosition = [...projects].sort((x, y) => (x.favorite_position ?? 0) - (y.favorite_position ?? 0));
+    expect(byFavoritePosition.map((p) => p.name)).toEqual(['C', 'A', 'B']);
+    // The main list order (by `position`) is untouched by a favorites reorder.
+    expect(projects.map((p) => p.name)).toEqual(['A', 'B', 'C']);
+  });
+
+  it('throws NotFoundError for a project that is not currently a favorite', async () => {
+    const a = await db.createProject(env.DB, userId, 'A');
+    const b = await db.createProject(env.DB, userId, 'B');
+    await db.toggleProjectFavorite(env.DB, userId, a.id);
+
+    await expect(db.reorderFavoriteProjects(env.DB, userId, [a.id, b.id])).rejects.toBeInstanceOf(db.NotFoundError);
+  });
+});

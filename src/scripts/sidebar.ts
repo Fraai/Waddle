@@ -10,6 +10,7 @@ const LOCK_ICON =
   '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="7" width="9" height="6" rx="1.3" /><path d="M5.3 7V5.2a2.7 2.7 0 0 1 5.4 0V7" /></svg><span class="sr-only">Toggle private/work</span>';
 const BRIEFCASE_ICON =
   '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5.3" width="12" height="7.5" rx="1.3" /><path d="M6 5.3V4.3a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v1M2 9h12" /></svg><span class="sr-only">Toggle private/work</span>';
+const STAR_PATH = 'M8 2.2 9.8 5.9l4.1.6-3 2.9.7 4.1L8 11.6 4.4 13.5l.7-4.1-3-2.9 4.1-.6z';
 
 // Same spacing as the server's projectHue() in AppLayout.astro — golden-angle
 // hue steps give every project a distinct, stable colour without storing one.
@@ -129,6 +130,26 @@ function attachProjectTypeBadge(button: HTMLButtonElement): void {
 
 document.querySelectorAll<HTMLButtonElement>('.project-type-badge').forEach(attachProjectTypeBadge);
 
+// Favoriting can add/remove a whole second row elsewhere on the page (the
+// Favorites section) and the existing rename/delete/color handlers only
+// ever update the one row they're attached to — simplest correct option is
+// a reload rather than trying to keep two lists in sync live.
+function attachProjectFavorite(button: HTMLButtonElement): void {
+  button.addEventListener('click', async () => {
+    const projectId = Number(button.dataset.projectId);
+    button.disabled = true;
+    const { error } = await actions.toggleProjectFavorite({ projectId });
+    if (error) {
+      button.disabled = false;
+      alert(error.message);
+      return;
+    }
+    location.reload();
+  });
+}
+
+document.querySelectorAll<HTMLButtonElement>('.project-favorite').forEach(attachProjectFavorite);
+
 // The sidebar dot opens a swatch-grid popover — 64 colours is too many to
 // cycle through one click at a time.
 let colorPicker: HTMLDivElement | null = null;
@@ -218,6 +239,22 @@ if (list) {
       const orderedIds = [...list.children].map((el) => Number((el as HTMLElement).dataset.projectId));
       // The DOM already shows the new order — only reload if the write fails.
       const { error } = await actions.reorderProjects({ orderedIds });
+      if (error) {
+        alert(error.message);
+        location.reload();
+      }
+    },
+  });
+}
+
+const favoriteList = document.getElementById('favorite-project-list');
+if (favoriteList) {
+  new Sortable(favoriteList, {
+    animation: 150,
+    easing: 'cubic-bezier(0.22, 1, 0.36, 1)',
+    onEnd: async () => {
+      const orderedIds = [...favoriteList.children].map((el) => Number((el as HTMLElement).dataset.projectId));
+      const { error } = await actions.reorderFavoriteProjects({ orderedIds });
       if (error) {
         alert(error.message);
         location.reload();
@@ -342,6 +379,14 @@ newProjectForm?.addEventListener('submit', async (e) => {
   typeBadge.title = project.type === 'private' ? 'Private — click to mark as Work' : 'Work — click to mark as Private';
   typeBadge.innerHTML = project.type === 'private' ? LOCK_ICON : BRIEFCASE_ICON;
 
+  const favoriteBtn = document.createElement('button');
+  favoriteBtn.type = 'button';
+  favoriteBtn.className = 'project-favorite icon-btn';
+  favoriteBtn.dataset.projectId = String(project.id);
+  favoriteBtn.dataset.favorite = 'false';
+  favoriteBtn.title = `Add ${project.name} to Favorites`;
+  favoriteBtn.innerHTML = `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"><path d="${STAR_PATH}" /></svg><span class="sr-only">Toggle favorite</span>`;
+
   const renameBtn = document.createElement('button');
   renameBtn.className = 'project-rename icon-btn';
   renameBtn.dataset.projectId = String(project.id);
@@ -354,10 +399,11 @@ newProjectForm?.addEventListener('submit', async (e) => {
   deleteBtn.title = `Delete ${project.name}`;
   deleteBtn.innerHTML = DELETE_ICON;
 
-  li.append(dot, link, typeBadge, renameBtn, deleteBtn);
+  li.append(dot, link, typeBadge, favoriteBtn, renameBtn, deleteBtn);
   list.append(li);
   attachProjectColorDot(dot);
   attachProjectTypeBadge(typeBadge);
+  attachProjectFavorite(favoriteBtn);
   attachProjectRename(renameBtn);
   attachProjectDelete(deleteBtn);
 

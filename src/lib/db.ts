@@ -10,6 +10,8 @@ export interface Project {
   type: 'private' | 'work';
   is_inbox: number;
   position: number;
+  is_favorite: number;
+  favorite_position: number | null;
   created_at: string;
 }
 
@@ -92,6 +94,44 @@ export async function reorderProjects(db: D1Database, userId: number, orderedIds
 
   const statements = orderedIds.map((id, index) =>
     db.prepare('UPDATE projects SET position = ? WHERE id = ? AND user_id = ? AND is_inbox = 0')
+      .bind(index + 1, id, userId),
+  );
+  await db.batch(statements);
+}
+
+// A favorite is a second, independent lens on top of the regular project
+// list, not a move — favoriting never touches `position`, and a project can
+// be in both places at once. Like rename/delete/setProjectType, the Inbox
+// is exempt: it's already pinned above everything, so a duplicate favorite
+// state would be redundant.
+export async function toggleProjectFavorite(db: D1Database, userId: number, projectId: number): Promise<void> {
+  const project = await db.prepare(
+    'SELECT is_favorite FROM projects WHERE id = ? AND user_id = ? AND is_inbox = 0',
+  ).bind(projectId, userId).first<{ is_favorite: number }>();
+  if (!project) throw new NotFoundError('Project not found');
+
+  if (project.is_favorite) {
+    await db.prepare('UPDATE projects SET is_favorite = 0, favorite_position = NULL WHERE id = ? AND user_id = ?')
+      .bind(projectId, userId).run();
+    return;
+  }
+
+  const row = await db.prepare(
+    'SELECT COALESCE(MAX(favorite_position), 0) AS max FROM projects WHERE user_id = ? AND is_favorite = 1',
+  ).bind(userId).first<{ max: number }>();
+  await db.prepare('UPDATE projects SET is_favorite = 1, favorite_position = ? WHERE id = ? AND user_id = ?')
+    .bind((row?.max ?? 0) + 1, projectId, userId).run();
+}
+
+export async function reorderFavoriteProjects(db: D1Database, userId: number, orderedIds: number[]): Promise<void> {
+  const placeholders = orderedIds.map(() => '?').join(',');
+  const owned = await db.prepare(
+    `SELECT COUNT(*) AS count FROM projects WHERE user_id = ? AND is_favorite = 1 AND id IN (${placeholders})`,
+  ).bind(userId, ...orderedIds).first<{ count: number }>();
+  if ((owned?.count ?? 0) !== orderedIds.length) throw new NotFoundError('Project not found');
+
+  const statements = orderedIds.map((id, index) =>
+    db.prepare('UPDATE projects SET favorite_position = ? WHERE id = ? AND user_id = ? AND is_favorite = 1')
       .bind(index + 1, id, userId),
   );
   await db.batch(statements);

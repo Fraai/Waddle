@@ -625,6 +625,25 @@ h2:hover > .icon-btn,
   transform: scale(0.9);
 }
 
+/* A favorited project's star stays visible so favorite status reads at a
+   glance in the regular Projects list too, not just inside Favorites —
+   unfavorited ones still only reveal on row hover, like rename/delete. The
+   amber fill (not .icon-btn's default red hover) since this isn't
+   destructive. */
+.project-favorite[data-favorite="true"] {
+  opacity: 1;
+  color: var(--accent-ink);
+}
+
+.project-favorite:hover {
+  background: var(--row-hover);
+  color: var(--accent-ink);
+}
+
+.project-dot--static {
+  cursor: default;
+}
+
 .subtasks {
   margin: var(--space-2) 0 0 var(--indent-subtask);
   padding-left: var(--space-3);

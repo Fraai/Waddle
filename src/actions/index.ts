@@ -4,7 +4,7 @@ import * as db from '../lib/db';
 import { withSlugs } from '../lib/slug';
 import {
   createProjectSchema, renameProjectSchema, deleteProjectSchema, reorderProjectsSchema, setProjectTypeSchema,
-  setProjectColorSchema,
+  setProjectColorSchema, toggleProjectFavoriteSchema, reorderFavoriteProjectsSchema,
   createSectionSchema, renameSectionSchema, deleteSectionSchema, reorderSectionsSchema,
   createTaskSchema, updateTaskSchema, toggleTaskDoneSchema, deleteTaskSchema, reorderTasksSchema,
   subscribePushSchema, unsubscribePushSchema,
@@ -82,6 +82,22 @@ export const server = {
     handler: async (input, context) => {
       const user = requireUser(context);
       await wrapNotFound(() => db.reorderProjects(env.DB, user.id, input.orderedIds));
+      return { success: true };
+    },
+  }),
+  toggleProjectFavorite: defineAction({
+    input: toggleProjectFavoriteSchema,
+    handler: async (input, context) => {
+      const user = requireUser(context);
+      await wrapNotFound(() => db.toggleProjectFavorite(env.DB, user.id, input.projectId));
+      return { success: true };
+    },
+  }),
+  reorderFavoriteProjects: defineAction({
+    input: reorderFavoriteProjectsSchema,
+    handler: async (input, context) => {
+      const user = requireUser(context);
+      await wrapNotFound(() => db.reorderFavoriteProjects(env.DB, user.id, input.orderedIds));
       return { success: true };
     },
   }),

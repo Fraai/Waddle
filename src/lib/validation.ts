@@ -37,6 +37,8 @@ export const renameProjectSchema = z.object({
 export const deleteProjectSchema = z.object({ projectId: idParam });
 export const reorderProjectsSchema = z.object({ orderedIds: z.array(idParam).min(1) });
 export const setProjectTypeSchema = z.object({ projectId: idParam, type: projectType });
+export const toggleProjectFavoriteSchema = z.object({ projectId: idParam });
+export const reorderFavoriteProjectsSchema = z.object({ orderedIds: z.array(idParam).min(1) });
 
 // Fixed palette rather than a free-form colour picker — keeps the input
 // small enough to validate with an enum (a raw string would flow into a
