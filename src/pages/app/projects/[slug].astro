@@ -78,6 +78,18 @@ const openCount = openTopLevel.length;
               </svg>
               <span class="sr-only">Delete section</span>
             </button>
+            <button type="button" class="move-btn move-up icon-btn" title={`Move ${group.name} up`}>
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M4 10l4-4 4 4" />
+              </svg>
+              <span class="sr-only">Move {group.name} up</span>
+            </button>
+            <button type="button" class="move-btn move-down icon-btn" title={`Move ${group.name} down`}>
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M4 6l4 4 4-4" />
+              </svg>
+              <span class="sr-only">Move {group.name} down</span>
+            </button>
           </h2>
         )}
 
@@ -131,6 +143,18 @@ const openCount = openTopLevel.length;
                     {formatDate(task.due_date)}{task.due_time && ` · ${task.due_time}`}
                   </span>
                 )}
+                <button type="button" class="move-btn move-up icon-btn" title={`Move "${task.title}" up`}>
+                  <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M4 10l4-4 4 4" />
+                  </svg>
+                  <span class="sr-only">Move "{task.title}" up</span>
+                </button>
+                <button type="button" class="move-btn move-down icon-btn" title={`Move "${task.title}" down`}>
+                  <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M4 6l4 4 4-4" />
+                  </svg>
+                  <span class="sr-only">Move "{task.title}" down</span>
+                </button>
                 <button class="task-delete icon-btn" data-task-id={task.id} title={`Delete "${task.title}"`}>
                   <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
                     <path d="M4 4l8 8M12 4l-8 8" />

@@ -1,6 +1,7 @@
 import Sortable from 'sortablejs';
 import { actions } from 'astro:actions';
 import { attachProjectEdit } from './project-edit';
+import { buildMoveButton, refreshMoveButtons, swapWithSibling } from './keyboard-reorder';
 
 const STAR_PATH = 'M8 2.2 9.8 5.9l4.1.6-3 2.9.7 4.1L8 11.6 4.4 13.5l.7-4.1-3-2.9 4.1-.6z';
 const EDIT_ICON =
@@ -201,6 +202,96 @@ function attachProjectColorDot(button: HTMLButtonElement): void {
 
 document.querySelectorAll<HTMLButtonElement>('button.project-dot').forEach(attachProjectColorDot);
 
+async function commitProjectOrder(list: HTMLElement): Promise<void> {
+  // Every row, in tree order, not just the moved group — reorderProjects
+  // assigns 1..N over exactly the ids it's given, so this renumbers the
+  // whole table, but callers only ever reorder within one sibling group.
+  const orderedIds = [...list.children].map((el) => Number((el as HTMLElement).dataset.projectId));
+  // The DOM already shows the new order — only reload if the write fails.
+  const { error } = await actions.reorderProjects({ orderedIds });
+  if (error) {
+    alert(error.message);
+    location.reload();
+  }
+}
+
+async function commitFavoriteOrder(list: HTMLElement): Promise<void> {
+  const orderedIds = [...list.children].map((el) => Number((el as HTMLElement).dataset.projectId));
+  const { error } = await actions.reorderFavoriteProjects({ orderedIds });
+  if (error) {
+    alert(error.message);
+    location.reload();
+  }
+}
+
+// A top-level project's own children immediately follow it in the DOM (tree-
+// order render, see AppLayout.astro) — moving it has to carry that block
+// along, or the swap would visually detach children from their parent until
+// the next full page load recomputes the tree. A child has no children of
+// its own (nesting is one level), so its own block is just itself.
+function projectBlock(item: HTMLElement): HTMLElement[] {
+  const ownId = item.dataset.projectId;
+  const block = [item];
+  let next = item.nextElementSibling as HTMLElement | null;
+  while (next && next.dataset.parentId === ownId) {
+    block.push(next);
+    next = next.nextElementSibling as HTMLElement | null;
+  }
+  return block;
+}
+
+function moveProjectBlock(item: HTMLElement, direction: 'up' | 'down'): boolean {
+  const list = item.parentElement;
+  if (!list) return false;
+  const parentId = item.dataset.parentId ?? '';
+  const siblings = ([...list.children] as HTMLElement[]).filter((el) => el.dataset.parentId === parentId);
+  const idx = siblings.indexOf(item);
+  if (idx === -1) return false;
+  const block = projectBlock(item);
+
+  if (direction === 'up') {
+    if (idx === 0) return false;
+    const anchor = projectBlock(siblings[idx - 1])[0];
+    for (const el of block) list.insertBefore(el, anchor);
+  } else {
+    if (idx === siblings.length - 1) return false;
+    const nextBlock = projectBlock(siblings[idx + 1]);
+    const anchor = nextBlock[nextBlock.length - 1];
+    for (let i = block.length - 1; i >= 0; i--) anchor.after(block[i]);
+  }
+  return true;
+}
+
+function attachProjectMoveButtons(li: HTMLElement, list: HTMLElement): void {
+  const up = li.querySelector<HTMLButtonElement>('.move-up');
+  const down = li.querySelector<HTMLButtonElement>('.move-down');
+  up?.addEventListener('click', async () => {
+    if (!moveProjectBlock(li, 'up')) return;
+    refreshMoveButtons(list, (el) => el.dataset.parentId ?? '');
+    await commitProjectOrder(list);
+  });
+  down?.addEventListener('click', async () => {
+    if (!moveProjectBlock(li, 'down')) return;
+    refreshMoveButtons(list, (el) => el.dataset.parentId ?? '');
+    await commitProjectOrder(list);
+  });
+}
+
+function attachFavoriteMoveButtons(li: HTMLElement, list: HTMLElement): void {
+  const up = li.querySelector<HTMLButtonElement>('.move-up');
+  const down = li.querySelector<HTMLButtonElement>('.move-down');
+  up?.addEventListener('click', async () => {
+    if (!swapWithSibling(li, 'up', () => true)) return;
+    refreshMoveButtons(list);
+    await commitFavoriteOrder(list);
+  });
+  down?.addEventListener('click', async () => {
+    if (!swapWithSibling(li, 'down', () => true)) return;
+    refreshMoveButtons(list);
+    await commitFavoriteOrder(list);
+  });
+}
+
 const list = document.getElementById('project-list');
 if (list) {
   new Sortable(list, {
@@ -211,20 +302,10 @@ if (list) {
     // themselves. Moving a project to a *different* group is what the
     // parent <select> is for, not drag-and-drop.
     onMove: (evt) => evt.dragged.dataset.parentId === evt.related.dataset.parentId,
-    onEnd: async () => {
-      // Every row, in tree order, not just the moved group — reorderProjects
-      // assigns 1..N over exactly the ids it's given, so this renumbers the
-      // whole table, but the onMove guard above already ensures the drag
-      // itself couldn't change any group's relative order but its own.
-      const orderedIds = [...list.children].map((el) => Number((el as HTMLElement).dataset.projectId));
-      // The DOM already shows the new order — only reload if the write fails.
-      const { error } = await actions.reorderProjects({ orderedIds });
-      if (error) {
-        alert(error.message);
-        location.reload();
-      }
-    },
+    onEnd: () => commitProjectOrder(list),
   });
+  document.querySelectorAll<HTMLElement>('#project-list > li').forEach((li) => attachProjectMoveButtons(li, list));
+  refreshMoveButtons(list, (el) => el.dataset.parentId ?? '');
 }
 
 const favoriteList = document.getElementById('favorite-project-list');
@@ -232,15 +313,12 @@ if (favoriteList) {
   new Sortable(favoriteList, {
     animation: 150,
     easing: 'cubic-bezier(0.22, 1, 0.36, 1)',
-    onEnd: async () => {
-      const orderedIds = [...favoriteList.children].map((el) => Number((el as HTMLElement).dataset.projectId));
-      const { error } = await actions.reorderFavoriteProjects({ orderedIds });
-      if (error) {
-        alert(error.message);
-        location.reload();
-      }
-    },
+    onEnd: () => commitFavoriteOrder(favoriteList),
   });
+  document
+    .querySelectorAll<HTMLElement>('#favorite-project-list > li')
+    .forEach((li) => attachFavoriteMoveButtons(li, favoriteList));
+  refreshMoveButtons(favoriteList);
 }
 
 // Rename and delete are also in the project-edit.ts modal now.
@@ -305,17 +383,22 @@ newProjectForm?.addEventListener('submit', async (e) => {
   favoriteBtn.title = `Add ${project.name} to Favorites`;
   favoriteBtn.innerHTML = `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"><path d="${STAR_PATH}" /></svg><span class="sr-only">Toggle favorite</span>`;
 
+  const moveUpBtn = buildMoveButton('up', project.name);
+  const moveDownBtn = buildMoveButton('down', project.name);
+
   const editBtn = document.createElement('button');
   editBtn.className = 'project-edit icon-btn';
   editBtn.dataset.projectId = String(project.id);
   editBtn.title = `Edit ${project.name}`;
   editBtn.innerHTML = EDIT_ICON;
 
-  li.append(dot, link, favoriteBtn, editBtn);
+  li.append(dot, link, favoriteBtn, moveUpBtn, moveDownBtn, editBtn);
   list.append(li);
   attachProjectColorDot(dot);
   attachProjectFavorite(favoriteBtn);
+  attachProjectMoveButtons(li, list);
   attachProjectEdit(editBtn);
+  refreshMoveButtons(list, (el) => el.dataset.parentId ?? '');
 
   input.value = '';
   input.focus();

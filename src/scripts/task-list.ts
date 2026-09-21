@@ -8,6 +8,7 @@ import './task-delete';
 import './task-edit';
 import './task-create';
 import { attachProjectComposer } from './task-create';
+import { buildMoveButton, refreshMoveButtons, swapWithSibling } from './keyboard-reorder';
 
 const RENAME_ICON =
   '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M11.3 2.7a1.2 1.2 0 0 1 1.7 1.7L5.6 12l-2.4.7.7-2.4z" /></svg><span class="sr-only">Rename section</span>';
@@ -37,12 +38,13 @@ function attachSectionRename(button: HTMLButtonElement): void {
     const h2 = button.closest<HTMLElement>('h2');
     const nameEl = h2?.querySelector<HTMLElement>('.section-name');
     const deleteBtn = h2?.querySelector<HTMLButtonElement>('.section-delete');
+    const moveBtns = h2 ? [...h2.querySelectorAll<HTMLButtonElement>('.move-btn')] : [];
     if (!h2 || !nameEl) return;
 
     startInlineRename({
       container: h2,
       displayEl: nameEl,
-      hideWhileEditing: [button, ...(deleteBtn ? [deleteBtn] : [])],
+      hideWhileEditing: [button, ...(deleteBtn ? [deleteBtn] : []), ...moveBtns],
       currentValue: nameEl.textContent ?? '',
       save: (name) => actions.renameSection({ sectionId, name }),
       onSaved: (name) => {
@@ -59,54 +61,99 @@ document.querySelectorAll<HTMLButtonElement>('.section-rename').forEach(attachSe
 const root = document.querySelector<HTMLElement>('[data-project-root]');
 const projectId = root ? Number(root.dataset.projectRoot) : null;
 
+async function commitTaskOrder(list: HTMLElement, pid: number): Promise<void> {
+  const sectionIdRaw = list.dataset.sectionId;
+  const sectionId = sectionIdRaw ? Number(sectionIdRaw) : null;
+  const orderedIds = [...list.children].map((el) => Number((el as HTMLElement).dataset.taskId));
+  // The DOM already shows the new order — only reload if the write fails.
+  const { error } = await actions.reorderTasks({ projectId: pid, sectionId, orderedIds });
+  if (error) {
+    alert(error.message);
+    location.reload();
+  }
+}
+
+// Keyboard move is scoped to within one list (one section) — unlike drag,
+// which can also carry a task across sections via the shared 'tasks' group.
+// Moving a task to a different section is a rarer move than reordering
+// within one; within-list keyboard parity covers the core operation.
+function attachTaskMoveButtons(li: HTMLElement, list: HTMLElement, pid: number): void {
+  const up = li.querySelector<HTMLButtonElement>('.move-up');
+  const down = li.querySelector<HTMLButtonElement>('.move-down');
+  up?.addEventListener('click', async () => {
+    if (!swapWithSibling(li, 'up', () => true)) return;
+    refreshMoveButtons(list);
+    await commitTaskOrder(list, pid);
+  });
+  down?.addEventListener('click', async () => {
+    if (!swapWithSibling(li, 'down', () => true)) return;
+    refreshMoveButtons(list);
+    await commitTaskOrder(list, pid);
+  });
+}
+
 function makeTaskListSortable(list: HTMLElement, pid: number): void {
   new Sortable(list, {
     group: 'tasks',
     animation: 150,
     easing: 'cubic-bezier(0.22, 1, 0.36, 1)',
-    onEnd: async (event) => {
-      const target = event.to;
-      const sectionIdRaw = target.dataset.sectionId;
-      const sectionId = sectionIdRaw ? Number(sectionIdRaw) : null;
-      const orderedIds = [...target.children].map((el) => Number((el as HTMLElement).dataset.taskId));
+    onEnd: (event) => commitTaskOrder(event.to, pid),
+  });
+  ([...list.children] as HTMLElement[]).forEach((el) => attachTaskMoveButtons(el, list, pid));
+  refreshMoveButtons(list);
+}
 
-      // The DOM already shows the new order — only reload if the write fails.
-      const { error } = await actions.reorderTasks({ projectId: pid, sectionId, orderedIds });
-      if (error) {
-        alert(error.message);
-        location.reload();
-      }
-    },
+// The unsectioned group (data-section-id="") always renders first and isn't
+// a real section — excluded from both drag (filter/onMove, below) and
+// keyboard move so it can't be reordered or pushed out of first place.
+const isRealSection = (el: Element) => (el as HTMLElement).dataset.sectionId !== '';
+const sectionsContainer = document.getElementById('sections-container');
+
+async function commitSectionOrder(): Promise<void> {
+  if (!sectionsContainer || projectId === null) return;
+  const orderedIds = [...sectionsContainer.children]
+    .map((el) => (el as HTMLElement).dataset.sectionId)
+    .filter((id): id is string => !!id)
+    .map(Number);
+  // The DOM already shows the new order — only reload if the write fails.
+  const { error } = await actions.reorderSections({ projectId, orderedIds });
+  if (error) {
+    alert(error.message);
+    location.reload();
+  }
+}
+
+function attachSectionMoveButtons(h2: HTMLElement): void {
+  const section = h2.closest<HTMLElement>('[data-section-id]');
+  if (!sectionsContainer || !section || section.dataset.sectionId === '') return;
+  const up = h2.querySelector<HTMLButtonElement>('.move-up');
+  const down = h2.querySelector<HTMLButtonElement>('.move-down');
+  up?.addEventListener('click', async () => {
+    if (!swapWithSibling(section, 'up', isRealSection)) return;
+    refreshMoveButtons(sectionsContainer, (el) => (isRealSection(el) ? 'section' : 'unsectioned'));
+    await commitSectionOrder();
+  });
+  down?.addEventListener('click', async () => {
+    if (!swapWithSibling(section, 'down', isRealSection)) return;
+    refreshMoveButtons(sectionsContainer, (el) => (isRealSection(el) ? 'section' : 'unsectioned'));
+    await commitSectionOrder();
   });
 }
 
 if (root && projectId !== null) {
   document.querySelectorAll<HTMLElement>('.task-list').forEach((list) => makeTaskListSortable(list, projectId));
 
-  // The unsectioned group (data-section-id="") always renders first and
-  // isn't a real section — filter keeps it from being picked up to drag,
-  // and onMove refuses any drop that would land ahead of it, so it can't
-  // be pushed out of first place by dragging something else there either.
-  const sectionsContainer = document.getElementById('sections-container');
   if (sectionsContainer) {
+    document.querySelectorAll<HTMLElement>('.section-handle').forEach(attachSectionMoveButtons);
+    refreshMoveButtons(sectionsContainer, (el) => (isRealSection(el) ? 'section' : 'unsectioned'));
+
     new Sortable(sectionsContainer, {
       handle: '.section-handle',
       filter: '[data-section-id=""]',
       animation: 150,
       easing: 'cubic-bezier(0.22, 1, 0.36, 1)',
       onMove: (event) => (event.related as HTMLElement).dataset.sectionId !== '',
-      onEnd: async () => {
-        const orderedIds = [...sectionsContainer.children]
-          .map((el) => (el as HTMLElement).dataset.sectionId)
-          .filter((id): id is string => !!id)
-          .map(Number);
-        // The DOM already shows the new order — only reload if the write fails.
-        const { error } = await actions.reorderSections({ projectId, orderedIds });
-        if (error) {
-          alert(error.message);
-          location.reload();
-        }
-      },
+      onEnd: commitSectionOrder,
     });
   }
 
@@ -145,7 +192,9 @@ if (root && projectId !== null) {
     deleteBtn.dataset.sectionId = String(section.id);
     deleteBtn.title = `Delete ${section.name}`;
     deleteBtn.innerHTML = DELETE_ICON;
-    h2.append(nameEl, renameBtn, deleteBtn);
+    const moveUpBtn = buildMoveButton('up', section.name);
+    const moveDownBtn = buildMoveButton('down', section.name);
+    h2.append(nameEl, renameBtn, deleteBtn, moveUpBtn, moveDownBtn);
 
     const list = document.createElement('ul');
     list.className = 'task-list';
@@ -193,6 +242,8 @@ if (root && projectId !== null) {
 
     attachSectionRename(renameBtn);
     attachSectionDelete(deleteBtn);
+    attachSectionMoveButtons(h2);
+    if (sectionsContainer) refreshMoveButtons(sectionsContainer, (el) => (isRealSection(el) ? 'section' : 'unsectioned'));
     makeTaskListSortable(list, projectId);
     attachProjectComposer(form, root);
 

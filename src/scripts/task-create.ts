@@ -4,6 +4,7 @@ import { attachTaskToggle } from './task-toggle';
 import { attachTaskDelete } from './task-delete';
 import { attachTaskEdit } from './task-edit';
 import { formatDate, formatDateHeading } from '../lib/format';
+import { buildMoveButton, refreshMoveButtons, swapWithSibling } from './keyboard-reorder';
 
 const DELETE_ICON =
   '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M4 4l8 8M12 4l-8 8" /></svg><span class="sr-only">Delete task</span>';
@@ -73,6 +74,37 @@ function buildTaskRow(
     pill.className = task.due_date < opts.today ? 'pill pill--overdue' : 'pill';
     pill.textContent = formatDate(task.due_date);
     main.append(pill);
+  }
+
+  // Only the project page keeps tasks in a manually-ordered list (Today/
+  // Upcoming have nothing to reorder, they're date-grouped) — same signal
+  // subtaskAddProjectId already uses for "are we on a project page".
+  if (opts.subtaskAddProjectId !== undefined) {
+    const moveUpBtn = buildMoveButton('up', `"${task.title}"`);
+    const moveDownBtn = buildMoveButton('down', `"${task.title}"`);
+    const commit = async (list: HTMLElement) => {
+      const orderedIds = [...list.children].map((el) => Number((el as HTMLElement).dataset.taskId));
+      const sectionIdRaw = list.dataset.sectionId;
+      const sectionId = sectionIdRaw ? Number(sectionIdRaw) : null;
+      const { error } = await actions.reorderTasks({ projectId: task.project_id, sectionId, orderedIds });
+      if (error) {
+        alert(error.message);
+        location.reload();
+      }
+    };
+    moveUpBtn.addEventListener('click', async () => {
+      const list = li.parentElement;
+      if (!list || !swapWithSibling(li, 'up', () => true)) return;
+      refreshMoveButtons(list);
+      await commit(list);
+    });
+    moveDownBtn.addEventListener('click', async () => {
+      const list = li.parentElement;
+      if (!list || !swapWithSibling(li, 'down', () => true)) return;
+      refreshMoveButtons(list);
+      await commit(list);
+    });
+    main.append(moveUpBtn, moveDownBtn);
   }
 
   const del = document.createElement('button');
@@ -216,6 +248,7 @@ function attachProjectComposer(form: HTMLFormElement, projectRoot: HTMLElement):
     const section = form.closest('section');
     const list = section?.querySelector<HTMLUListElement>('ul.task-list');
     list?.append(buildTaskRow(task, { showPill: true, today, subtaskAddProjectId: projectId }));
+    if (list) refreshMoveButtons(list);
     section?.querySelector('.empty')?.remove();
     bumpOpenCount(1);
     resetTitle(form);

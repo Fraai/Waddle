@@ -645,6 +645,18 @@ h2:hover > .icon-btn,
   color: var(--accent-ink);
 }
 
+/* Keyboard reorder buttons — a plain structural action, not destructive, so
+   they don't get .icon-btn's default danger-red hover. */
+.move-btn:hover {
+  background: var(--row-hover);
+  color: var(--text);
+}
+
+.move-btn:disabled {
+  opacity: 0 !important;
+  pointer-events: none;
+}
+
 .project-dot--static {
   cursor: default;
 }
