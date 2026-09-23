@@ -104,7 +104,8 @@ function makeTaskListSortable(list: HTMLElement, pid: number): void {
 }
 
 // The unsectioned group (data-section-id="") always renders first and isn't
-// a real section — excluded from both drag (filter/onMove, below) and
+// a real section — excluded from both drag (it has no .section-handle to
+// start a drag from, and onMove below refuses to drop before it) and
 // keyboard move so it can't be reordered or pushed out of first place.
 const isRealSection = (el: Element) => (el as HTMLElement).dataset.sectionId !== '';
 const sectionsContainer = document.getElementById('sections-container');
@@ -149,7 +150,6 @@ if (root && projectId !== null) {
 
     new Sortable(sectionsContainer, {
       handle: '.section-handle',
-      filter: '[data-section-id=""]',
       animation: 150,
       easing: 'cubic-bezier(0.22, 1, 0.36, 1)',
       onMove: (event) => (event.related as HTMLElement).dataset.sectionId !== '',
