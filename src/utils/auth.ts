@@ -99,6 +99,14 @@ export function clearAuthCookie(): string {
 // The org's Google Workspace domain (e.g. "example.com", no "@") — set via
 // the ALLOWED_EMAIL_DOMAIN secret, not hardcoded, so this is deployable for
 // any organization without forking the code.
+// Constant-time string compare for bearer tokens (MCP_TOKEN, DASH_TOKEN).
+export function timingSafeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
+}
+
 export function isAllowedEmail(email: string, allowedDomain: string): boolean {
   const e = email.trim().toLowerCase();
   return e.endsWith(`@${allowedDomain.trim().toLowerCase()}`);

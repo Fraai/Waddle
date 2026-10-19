@@ -17,7 +17,12 @@ export default defineConfig(async () => {
         miniflare: {
           compatibilityDate: '2026-07-07',
           d1Databases: { DB: 'waddle-test' },
-          bindings: { TEST_MIGRATIONS: migrations, JWT_SECRET: 'test-secret-at-least-32-characters-long' },
+          bindings: {
+            TEST_MIGRATIONS: migrations,
+            JWT_SECRET: 'test-secret-at-least-32-characters-long',
+            DASH_TOKEN: 'test-dash-token',
+            ALLOWED_EMAIL_DOMAIN: 'example.com',
+          },
         },
       }),
     ],

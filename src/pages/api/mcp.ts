@@ -7,18 +7,12 @@ import * as db from '../../lib/db';
 import { getUserByEmail, type User } from '../../lib/users';
 import { todayISO, splitOverdueAndToday, groupUpcoming, DEFAULT_TIMEZONE } from '../../lib/dates';
 import { descriptionField, hrefField, repeatRuleField, timeString } from '../../lib/validation';
+import { timingSafeEqual } from '../../utils/auth';
 
 // A single token maps to a single account (env.MCP_USER_EMAIL) — this is a
 // personal-automation tool, not a multi-tenant API. Using the same token
 // from more than one Claude install (e.g. a personal one and a client's)
 // still just authenticates as that one person.
-function timingSafeEqual(a: string, b: string): boolean {
-  if (a.length !== b.length) return false;
-  let diff = 0;
-  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
-  return diff === 0;
-}
-
 async function authenticate(request: Request): Promise<User | null> {
   const header = request.headers.get('authorization') ?? '';
   const token = header.startsWith('Bearer ') ? header.slice(7).trim() : '';

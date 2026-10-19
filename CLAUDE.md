@@ -47,6 +47,7 @@ Internal Todoist alternative for the Fraai Agency team, branded as "Waddle" for 
 | `AUTH_MICROSOFT_TENANT` | Optional, defaults to `common` (any tenant) — set to a specific Entra tenant ID to restrict which org's accounts even reach the consent screen |
 | `MCP_TOKEN` | Bearer token for `/api/mcp` — optional, leave unset to disable it |
 | `MCP_USER_EMAIL` | Which existing user `MCP_TOKEN` authenticates as — optional, required if `MCP_TOKEN` is set |
+| `DASH_TOKEN` | Bearer token for `/api/today` (read-only overdue + due-today feed for dash.fraai.agency) — optional, leave unset to disable it |
 | `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` / `VAPID_SUBJECT` | Push notifications (see below) — optional, leave unset to hide the sidebar's "Notifications" toggle. Generate with the command in `.env.example`; `VAPID_SUBJECT` is a `mailto:` address |
 
 Local: put these in `.dev.vars` (gitignored, see `.env.example` for the variable names). Production: `npx wrangler secret put <NAME>`.
