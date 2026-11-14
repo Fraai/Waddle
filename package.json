@@ -21,7 +21,7 @@
     "@astrojs/cloudflare": "^14.0.2",
     "@block65/webcrypto-web-push": "^2.0.0",
     "@modelcontextprotocol/sdk": "^1.30.0",
-    "astro": "^7.0.4",
+    "astro": "^7.4.12",
     "sortablejs": "^1.15.0",
     "zod": "^4.4.3"
   },
